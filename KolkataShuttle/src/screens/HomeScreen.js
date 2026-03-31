@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, Dimensions, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
 import * as Location from 'expo-location';
+import { Text, Card, Button, IconButton, TextInput, Divider, Chip } from 'react-native-paper';
 import OSMMap from '../components/OSMMap';
-import LocationInput from '../components/LocationInput';
-import ServiceCard from '../components/ServiceCard';
-import OfferCard from '../components/OfferCard';
-import DriverInfo from '../components/DriverInfo';
 import { routes } from '../utils/dummyData';
 
 const { width, height } = Dimensions.get('window');
@@ -26,171 +23,162 @@ export default function HomeScreen({ navigation }) {
     })();
   }, []);
 
-  const handleSelectOffer = (route, busType) => {
-    navigation.navigate('SeatSelection', { route, busType });
-  };
-
-  // Mock data for services (history)
+  // Indian-themed services (you can replace with real data later)
   const services = [
     { title: 'Shoppine, Baja City Mall', subtitle: 'A. Arredondo Ave., Alamos, Oaxaca road' },
     { title: 'Shoppine, Baja City Mall', subtitle: 'A. Arredondo Ave., Alamos, Oaxaca road' },
   ];
 
-  // Mock offers from routes
+  // Map routes to offers (using Indian vehicle names)
   const offers = routes.map(route => ({
     id: route.id,
-    vehicle: route.name.split(' → ')[0],
+    vehicle: route.name.split(' → ')[0], // e.g., "Salt Lake Sector V"
     price: route.fare.ac,
     duration: route.time,
     route: route,
     busType: 'ac',
   }));
 
+  const handleSelectOffer = (route, busType) => {
+    navigation.navigate('SeatSelection', { route, busType });
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Map */}
-        <View style={styles.mapContainer}>
-          <OSMMap userLocation={userLocation} />
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
+      {/* Map container */}
+      <View style={{ height: height * 0.5, width }}>
+        <OSMMap userLocation={userLocation} />
+      </View>
+
+      {/* Scrollable bottom sheet */}
+      <ScrollView
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          maxHeight: height * 0.65,
+          backgroundColor: '#000',
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          paddingTop: 16,
+        }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
+      >
+        {/* Greeting */}
+        <Text variant="headlineLarge" style={{ marginHorizontal: 16, marginBottom: 8, color: '#fff', fontWeight: 'bold' }}>
+          Hello, Rajesh
+        </Text>
+
+        {/* Location card */}
+        <Card style={{ marginHorizontal: 16, marginBottom: 12, backgroundColor: '#1a1a1a', borderRadius: 16 }}>
+          <Card.Content>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <IconButton icon="map-marker" iconColor="#fff" size={20} />
+              <Text variant="bodyMedium" style={{ color: '#fff', marginLeft: 4 }}>Your current location</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <IconButton icon="navigation" iconColor="#fff" size={20} />
+              <TextInput
+                mode="flat"
+                placeholder="Enter pick-up location"
+                placeholderTextColor="#666"
+                style={{ flex: 1, backgroundColor: 'transparent' }}
+                theme={{ colors: { text: '#fff', placeholder: '#666', primary: '#fff' } }}
+                underlineColor="transparent"
+                activeUnderlineColor="#fff"
+              />
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* Services section */}
+        <Text variant="titleLarge" style={{ marginHorizontal: 16, marginVertical: 8, color: '#fff', fontWeight: '600' }}>
+          Our Services
+        </Text>
+        {services.map((service, idx) => (
+          <Card key={idx} style={{ marginHorizontal: 16, marginBottom: 8, backgroundColor: '#1a1a1a', borderRadius: 12 }}>
+            <Card.Content style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <IconButton icon="clock-outline" iconColor="#fff" size={24} />
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text variant="titleMedium" style={{ color: '#fff' }}>{service.title}</Text>
+                <Text variant="bodySmall" style={{ color: '#aaa' }}>{service.subtitle}</Text>
+              </View>
+              <IconButton icon="chevron-right" iconColor="#fff" size={20} />
+            </Card.Content>
+          </Card>
+        ))}
+
+        {/* Offers section */}
+        <Text variant="titleLarge" style={{ marginHorizontal: 16, marginVertical: 8, color: '#fff', fontWeight: '600' }}>
+          Select an offer:
+        </Text>
+        {offers.map((offer) => (
+          <Card key={offer.id} style={{ marginHorizontal: 16, marginBottom: 8, backgroundColor: '#1a1a1a', borderRadius: 12 }}>
+            <Card.Content style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <IconButton icon="bus" iconColor="#fff" size={24} />
+                <Text variant="titleMedium" style={{ color: '#fff', marginLeft: 8 }}>{offer.vehicle}</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text variant="titleMedium" style={{ color: '#fff' }}>₹{offer.price}</Text>
+                <Text variant="bodySmall" style={{ color: '#aaa' }}>{offer.duration}</Text>
+              </View>
+            </Card.Content>
+            <Card.Actions style={{ justifyContent: 'flex-end', paddingTop: 0 }}>
+              <Button mode="text" onPress={() => handleSelectOffer(offer.route, offer.busType)} textColor="#fff">
+                Book
+              </Button>
+            </Card.Actions>
+          </Card>
+        ))}
+
+        {/* Action buttons */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: 16, marginVertical: 12 }}>
+          <Button mode="outlined" onPress={() => {}} style={{ flex: 1, marginRight: 8 }} textColor="#fff" buttonColor="transparent">
+            Reset Offer
+          </Button>
+          <Button mode="outlined" onPress={() => {}} style={{ flex: 1, marginLeft: 8 }} textColor="#ef4444" buttonColor="transparent">
+            Cancel Trip
+          </Button>
         </View>
 
-        {/* Content */}
-        <View style={styles.content}>
-          <Text style={styles.greeting}>Hi Josefin</Text>
+        {/* Fare info */}
+        <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#fff', marginVertical: 8 }}>
+          ₹5 more till arrival
+        </Text>
 
-          <LocationInput />
-
-          <Text style={styles.sectionTitle}>Our Services</Text>
-          {services.map((service, idx) => (
-            <ServiceCard
-              key={idx}
-              title={service.title}
-              subtitle={service.subtitle}
-              onPress={() => console.log('Service pressed')}
-            />
-          ))}
-
-          <Text style={styles.sectionTitle}>Select an offer:</Text>
-          {offers.map((offer) => (
-            <OfferCard
-              key={offer.id}
-              vehicle={offer.vehicle}
-              price={offer.price}
-              duration={offer.duration}
-              onSelect={() => handleSelectOffer(offer.route, offer.busType)}
-            />
-          ))}
-
-          <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.resetButton}>
-              <Text style={styles.resetText}>Reset Offer</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelButton}>
-              <Text style={styles.cancelText}>Cancel Trip</Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.extraInfo}>₹5 more till arrival</Text>
-
-          <View style={styles.paymentRow}>
-            <Text style={styles.paymentLabel}>VISA®</Text>
-            <Text style={styles.paymentAmount}>₹15,000</Text>
-          </View>
-
-          <DriverInfo name="Mr. Ramiro Aldabarese" extra="4.9 ★" />
+        {/* Payment row */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#2a2a2a' }}>
+          <Text variant="titleMedium" style={{ color: '#fff' }}>VISA®</Text>
+          <Text variant="titleLarge" style={{ color: '#fff' }}>₹15,000</Text>
         </View>
+
+        {/* Driver info (Indian name) */}
+        <Card style={{ marginHorizontal: 16, marginVertical: 12, backgroundColor: '#1a1a1a', borderRadius: 16 }}>
+          <Card.Content>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' }}>
+                <Text variant="titleLarge" style={{ color: '#000' }}>R</Text>
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text variant="titleMedium" style={{ color: '#fff' }}>Ramesh Kumar</Text>
+                <Text variant="bodySmall" style={{ color: '#aaa' }}>4.8 ★</Text>
+              </View>
+              <Button mode="text" icon="chat" onPress={() => {}} textColor="#fff">Message</Button>
+            </View>
+            <View style={{ flexDirection: 'row', marginTop: 8 }}>
+              <IconButton icon="map-marker" iconColor="#fff" size={16} style={{ margin: 0 }} />
+              <Text variant="bodySmall" style={{ color: '#ddd', flex: 1, marginLeft: 4 }}>Shoppine, Baja City Mall – A. Arredondo Ave., Alamos, Oaxaca road</Text>
+            </View>
+            <View style={{ flexDirection: 'row', marginTop: 8 }}>
+              <IconButton icon="navigation" iconColor="#fff" size={16} style={{ margin: 0 }} />
+              <Text variant="bodySmall" style={{ color: '#ddd', flex: 1, marginLeft: 4 }}>Muralto Muhammad Airport – A. Arredondo Ave., Alamos, Oaxaca road</Text>
+            </View>
+          </Card.Content>
+        </Card>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  mapContainer: {
-    width: '100%',
-    height: height * 0.4, // 40% of screen height
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  greeting: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginTop: 16,
-    marginBottom: 12,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 16,
-  },
-  resetButton: {
-    backgroundColor: '#e5e7eb',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 30,
-    flex: 0.48,
-    alignItems: 'center',
-  },
-  resetText: {
-    color: '#374151',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  cancelButton: {
-    backgroundColor: '#fee2e2',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 30,
-    flex: 0.48,
-    alignItems: 'center',
-  },
-  cancelText: {
-    color: '#ef4444',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  extraInfo: {
-    textAlign: 'center',
-    color: '#10b981',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginVertical: 12,
-  },
-  paymentRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#e5e7eb',
-    marginVertical: 8,
-  },
-  paymentLabel: {
-    fontSize: 16,
-    color: '#1f2937',
-    fontWeight: '500',
-  },
-  paymentAmount: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#10b981',
-  },
-});

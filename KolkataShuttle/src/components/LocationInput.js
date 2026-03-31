@@ -1,53 +1,25 @@
 import React from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View } from 'react-native';
+import { TextInput, IconButton, Text } from 'react-native-paper';
 
 export default function LocationInput() {
   return (
-    <View style={styles.container}>
-      <View style={styles.row}>
-        <Ionicons name="location" size={20} color="#10b981" />
-        <Text style={styles.label}>Your current location</Text>
+    <View style={{ marginHorizontal: 16, marginBottom: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+        <IconButton icon="map-marker" iconColor="#10b981" size={20} />
+        <Text variant="bodyMedium">Your current location</Text>
       </View>
-      <View style={styles.row}>
-        <Ionicons name="navigate-circle" size={20} color="#10b981" />
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <IconButton icon="navigation" iconColor="#10b981" size={20} />
         <TextInput
-          style={styles.input}
+          mode="flat"
           placeholder="Enter pick-up location"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#666"
+          style={{ flex: 1, backgroundColor: 'transparent' }}
+          theme={{ colors: { text: '#fff', placeholder: '#666' } }}
+          underlineColor="transparent"
         />
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  label: {
-    color: '#374151',
-    fontSize: 14,
-    marginLeft: 8,
-  },
-  input: {
-    flex: 1,
-    color: '#1f2937',
-    fontSize: 14,
-    marginLeft: 8,
-    paddingVertical: 8,
-  },
-});

@@ -1,17 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, ScrollView } from 'react-native';
+import { Text, Card, Button } from 'react-native-paper';
 import Header from '../components/Header';
 import SeatMap from '../components/SeatMap';
-import CustomButton from '../components/CustomButton';
 import { seatLayout } from '../utils/dummyData';
 
 export default function SeatSelectionScreen({ route, navigation }) {
   const { route: busRoute, busType } = route.params;
   const [selectedSeats, setSelectedSeats] = useState([]);
-
-  const handleSeatSelect = (seats) => {
-    setSelectedSeats(seats);
-  };
+  const farePerSeat = busType === 'ac' ? busRoute.fare.ac : busRoute.fare.nonAc;
+  const total = selectedSeats.length * farePerSeat;
 
   const handleConfirm = () => {
     if (selectedSeats.length === 0) return;
@@ -19,88 +17,36 @@ export default function SeatSelectionScreen({ route, navigation }) {
       route: busRoute,
       busType,
       seats: selectedSeats,
-      fare: busType === 'ac' ? busRoute.fare.ac : busRoute.fare.nonAc,
+      fare: farePerSeat,
     });
   };
 
-  const farePerSeat = busType === 'ac' ? busRoute.fare.ac : busRoute.fare.nonAc;
-  const total = selectedSeats.length * farePerSeat;
-
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
       <Header title="Select Seats" />
       <ScrollView>
-        <View style={styles.info}>
-          <Text style={styles.routeName}>{busRoute.name}</Text>
-          <Text style={styles.busType}>{busType.toUpperCase()} Bus</Text>
-          <Text style={styles.time}>{busRoute.time}</Text>
-        </View>
+        <Card style={{ margin: 16, backgroundColor: '#1a1a1a' }}>
+          <Card.Content>
+            <Text variant="titleLarge" style={{ color: '#fff' }}>{busRoute.name}</Text>
+            <Text variant="bodyMedium" style={{ color: '#10b981', marginVertical: 4 }}>{busType.toUpperCase()} Bus</Text>
+            <Text variant="bodySmall" style={{ color: '#aaa' }}>{busRoute.time}</Text>
+          </Card.Content>
+        </Card>
 
-        <SeatMap bookedSeats={seatLayout.bookedSeats} onSeatSelect={handleSeatSelect} />
+        <SeatMap bookedSeats={seatLayout.bookedSeats} onSeatSelect={setSelectedSeats} />
 
-        <View style={styles.summary}>
-          <Text style={styles.summaryText}>
-            Selected Seats: {selectedSeats.join(', ') || 'None'}
-          </Text>
-          <Text style={styles.summaryText}>Total: ₹{total}</Text>
-        </View>
-
-        <CustomButton
-          title="Confirm Booking"
-          onPress={handleConfirm}
-          disabled={selectedSeats.length === 0}
-          style={styles.confirmButton}
-        />
+        <Card style={{ margin: 16, backgroundColor: '#1a1a1a' }}>
+          <Card.Content>
+            <Text variant="bodyMedium" style={{ color: '#fff' }}>Selected Seats: {selectedSeats.join(', ') || 'None'}</Text>
+            <Text variant="titleMedium" style={{ color: '#10b981', marginTop: 8 }}>Total: ₹{total}</Text>
+          </Card.Content>
+          <Card.Actions>
+            <Button mode="contained" onPress={handleConfirm} disabled={selectedSeats.length === 0} buttonColor="#10b981" style={{ flex: 1 }}>
+              Confirm Booking
+            </Button>
+          </Card.Actions>
+        </Card>
       </ScrollView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  info: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    backgroundColor: '#ffffff',
-  },
-  routeName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
-  },
-  busType: {
-    fontSize: 16,
-    color: '#10b981',
-    marginVertical: 4,
-  },
-  time: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  summary: {
-    padding: 20,
-    backgroundColor: '#ffffff',
-    marginVertical: 12,
-    borderRadius: 16,
-    marginHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  summaryText: {
-    fontSize: 16,
-    marginVertical: 2,
-    fontWeight: '500',
-    color: '#1f2937',
-  },
-  confirmButton: {
-    marginHorizontal: 16,
-    marginBottom: 24,
-  },
-});
