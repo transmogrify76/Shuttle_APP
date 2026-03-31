@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "KolkataShuttle",
+    "slug": "KolkataShuttle",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Kolkata Shuttle needs your location to show nearby routes and track your bus."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "permissions": [
+              "ACCESS_COARSE_LOCATION",
+              "ACCESS_FINE_LOCATION"
+            ]
+          },
+          "ios": {
+            "infoPlist": {
+              "NSLocationWhenInUseUsageDescription": "Kolkata Shuttle needs your location to show nearby routes and track your bus."
+            }
+          }
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Kolkata Shuttle to use your location to show nearby buses and routes."
+        }
+      ]
+    ]
+  }
+}
