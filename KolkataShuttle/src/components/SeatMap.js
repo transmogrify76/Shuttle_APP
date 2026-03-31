@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+
+const { width } = Dimensions.get('window');
+const SEAT_SIZE = (width - 80) / 5; // Roughly 1/5 of width minus margins
 
 const SeatMap = ({ bookedSeats = [], onSeatSelect }) => {
   const [selectedSeats, setSelectedSeats] = useState([]);
@@ -26,6 +28,7 @@ const SeatMap = ({ bookedSeats = [], onSeatSelect }) => {
         key={seatId}
         style={[
           styles.seat,
+          { width: SEAT_SIZE, height: SEAT_SIZE },
           isBooked && styles.booked,
           isSelected && styles.selected,
         ]}
@@ -37,7 +40,6 @@ const SeatMap = ({ bookedSeats = [], onSeatSelect }) => {
     );
   };
 
-  // 10 rows, 4 columns (A, B, C, D)
   const rows = 10;
   const cols = 4;
   return (
@@ -70,6 +72,7 @@ const SeatMap = ({ bookedSeats = [], onSeatSelect }) => {
 const styles = StyleSheet.create({
   container: {
     padding: 16,
+    backgroundColor: '#f8f9fa',
   },
   legend: {
     flexDirection: 'row',
@@ -88,17 +91,17 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   availableBox: {
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#e5e7eb',
   },
   selectedBox: {
-    backgroundColor: '#2c7da0',
+    backgroundColor: '#10b981',
   },
   bookedBox: {
-    backgroundColor: '#ff6b6b',
+    backgroundColor: '#ef4444',
   },
   legendText: {
     fontSize: 12,
-    color: '#666',
+    color: '#6b7280',
   },
   row: {
     flexDirection: 'row',
@@ -109,22 +112,20 @@ const styles = StyleSheet.create({
     width: 30,
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#666',
+    color: '#6b7280',
   },
   seat: {
-    width: 44,
-    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#e5e7eb',
     marginHorizontal: 4,
   },
   booked: {
-    backgroundColor: '#ff6b6b',
+    backgroundColor: '#ef4444',
   },
   selected: {
-    backgroundColor: '#2c7da0',
+    backgroundColor: '#10b981',
   },
   seatText: {
     fontSize: 12,

@@ -59,38 +59,45 @@ export default function SeatSelectionScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8f9fa',
   },
   info: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#e5e7eb',
+    backgroundColor: '#ffffff',
   },
   routeName: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1f2937',
   },
   busType: {
     fontSize: 16,
-    color: '#2c7da0',
+    color: '#10b981',
     marginVertical: 4,
   },
   time: {
     fontSize: 14,
-    color: '#666',
+    color: '#6b7280',
   },
   summary: {
     padding: 20,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#ffffff',
     marginVertical: 12,
     borderRadius: 16,
     marginHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   summaryText: {
     fontSize: 16,
     marginVertical: 2,
     fontWeight: '500',
+    color: '#1f2937',
   },
   confirmButton: {
     marginHorizontal: 16,

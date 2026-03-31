@@ -5,8 +5,8 @@ import Header from '../components/Header';
 
 export default function ProfileScreen() {
   const profile = {
-    name: 'John Doe',
-    email: 'john.doe@example.com',
+    name: 'Rajesh Sharma',
+    email: 'rajesh.sharma@example.com',
     phone: '+91 98765 43210',
   };
 
@@ -14,7 +14,7 @@ export default function ProfileScreen() {
     { icon: 'card-outline', label: 'Payment Methods' },
     { icon: 'help-circle-outline', label: 'Help & Support' },
     { icon: 'settings-outline', label: 'Settings' },
-    { icon: 'log-out-outline', label: 'Logout', color: '#ff6b6b' },
+    { icon: 'log-out-outline', label: 'Logout', color: '#ef4444' },
   ];
 
   return (
@@ -33,9 +33,9 @@ export default function ProfileScreen() {
         <View style={styles.menu}>
           {menuItems.map((item, idx) => (
             <TouchableOpacity key={idx} style={styles.menuItem}>
-              <Ionicons name={item.icon} size={24} color={item.color || '#2c7da0'} />
+              <Ionicons name={item.icon} size={24} color={item.color || '#10b981'} />
               <Text style={[styles.menuLabel, item.color && { color: item.color }]}>{item.label}</Text>
-              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+              <Ionicons name="chevron-forward" size={20} color="#d1d5db" />
             </TouchableOpacity>
           ))}
         </View>
@@ -47,19 +47,20 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8f9fa',
   },
   profileHeader: {
     alignItems: 'center',
     paddingVertical: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#e5e7eb',
+    backgroundColor: '#ffffff',
   },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#2c7da0',
+    backgroundColor: '#10b981',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -72,16 +73,16 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1f2937',
   },
   email: {
     fontSize: 14,
-    color: '#666',
+    color: '#6b7280',
     marginTop: 4,
   },
   phone: {
     fontSize: 14,
-    color: '#666',
+    color: '#6b7280',
     marginTop: 2,
   },
   menu: {
@@ -93,12 +94,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#e5e7eb',
+    backgroundColor: '#ffffff',
+    marginBottom: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
   },
   menuLabel: {
     flex: 1,
     fontSize: 16,
     marginLeft: 12,
-    color: '#333',
+    color: '#1f2937',
   },
 });

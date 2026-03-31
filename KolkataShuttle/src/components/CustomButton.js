@@ -11,7 +11,7 @@ export default function CustomButton({ title, onPress, style, textStyle, disable
       style={[styles.button, style]}
     >
       <LinearGradient
-        colors={disabled ? ['#ccc', '#bbb'] : ['#2c7da0', '#1f5e7a']}
+        colors={disabled ? ['#e5e7eb', '#d1d5db'] : ['#10b981', '#059669']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.gradient}

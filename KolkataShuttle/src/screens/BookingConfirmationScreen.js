@@ -17,29 +17,29 @@ export default function BookingConfirmationScreen({ route, navigation }) {
       <Header title="Booking Confirmed" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.successIcon}>
-          <Ionicons name="checkmark-circle" size={80} color="#4caf50" />
+          <Ionicons name="checkmark-circle" size={80} color="#10b981" />
         </View>
         <Text style={styles.title}>Thank you for booking!</Text>
 
         <View style={styles.card}>
           <View style={styles.detailRow}>
-            <Ionicons name="bus" size={20} color="#2c7da0" />
+            <Ionicons name="bus" size={20} color="#10b981" />
             <Text style={styles.detailText}>{busRoute.name}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Ionicons name="car-sport" size={20} color="#2c7da0" />
+            <Ionicons name="car-sport" size={20} color="#10b981" />
             <Text style={styles.detailText}>{busType.toUpperCase()} Bus</Text>
           </View>
           <View style={styles.detailRow}>
-            <Ionicons name="time" size={20} color="#2c7da0" />
+            <Ionicons name="time" size={20} color="#10b981" />
             <Text style={styles.detailText}>{busRoute.time}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Ionicons name="grid" size={20} color="#2c7da0" />
+            <Ionicons name="grid" size={20} color="#10b981" />
             <Text style={styles.detailText}>Seats: {seats.join(', ')}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Ionicons name="cash" size={20} color="#2c7da0" />
+            <Ionicons name="cash" size={20} color="#10b981" />
             <Text style={styles.detailText}>Total: ₹{total}</Text>
           </View>
         </View>
@@ -53,7 +53,7 @@ export default function BookingConfirmationScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8f9fa',
   },
   content: {
     padding: 20,
@@ -65,15 +65,20 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1f2937',
     marginBottom: 24,
   },
   card: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#ffffff',
     borderRadius: 20,
     padding: 20,
     width: '100%',
     marginBottom: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   detailRow: {
     flexDirection: 'row',
@@ -83,6 +88,6 @@ const styles = StyleSheet.create({
   detailText: {
     fontSize: 16,
     marginLeft: 12,
-    color: '#555',
+    color: '#4b5563',
   },
 });

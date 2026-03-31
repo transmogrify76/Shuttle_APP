@@ -23,15 +23,18 @@ export default function MainTabNavigator() {
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#2c7da0',
-        tabBarInactiveTintColor: '#8e8e93',
+        tabBarActiveTintColor: '#10b981',
+        tabBarInactiveTintColor: '#6b7280',
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: '#000000',
           borderTopWidth: 0,
           elevation: 8,
           shadowColor: '#000',
-          shadowOpacity: 0.05,
+          shadowOpacity: 0.1,
           shadowRadius: 4,
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 8,
         },
         headerShown: false,
       })}

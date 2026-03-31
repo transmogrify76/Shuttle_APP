@@ -22,7 +22,6 @@ const OSM_MAP_HTML = `
       maxZoom: 19
     }).addTo(map);
 
-    // Try to get user location
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         function(pos) {

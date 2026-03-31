@@ -1,22 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { View, FlatList, StyleSheet, Dimensions, Text, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Dimensions, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import * as Location from 'expo-location';
-import Header from '../components/Header';
-import BusCard from '../components/BusCard';
 import OSMMap from '../components/OSMMap';
+import LocationInput from '../components/LocationInput';
+import ServiceCard from '../components/ServiceCard';
+import OfferCard from '../components/OfferCard';
+import DriverInfo from '../components/DriverInfo';
 import { routes } from '../utils/dummyData';
-import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
   const [userLocation, setUserLocation] = useState(null);
-  const [locationPermission, setLocationPermission] = useState(null);
 
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      setLocationPermission(status === 'granted');
       if (status === 'granted') {
         const location = await Location.getCurrentPositionAsync({});
         setUserLocation({
@@ -27,38 +26,81 @@ export default function HomeScreen({ navigation }) {
     })();
   }, []);
 
-  const handleSelectBus = (route, busType) => {
+  const handleSelectOffer = (route, busType) => {
     navigation.navigate('SeatSelection', { route, busType });
   };
 
+  // Mock data for services (history)
+  const services = [
+    { title: 'Shoppine, Baja City Mall', subtitle: 'A. Arredondo Ave., Alamos, Oaxaca road' },
+    { title: 'Shoppine, Baja City Mall', subtitle: 'A. Arredondo Ave., Alamos, Oaxaca road' },
+  ];
+
+  // Mock offers from routes
+  const offers = routes.map(route => ({
+    id: route.id,
+    vehicle: route.name.split(' → ')[0],
+    price: route.fare.ac,
+    duration: route.time,
+    route: route,
+    busType: 'ac',
+  }));
+
   return (
-    <View style={styles.container}>
-      <Header title="Kolkata Shuttle" />
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Map */}
+        <View style={styles.mapContainer}>
+          <OSMMap userLocation={userLocation} />
+        </View>
 
-      {/* Map Container */}
-      <View style={styles.mapContainer}>
-        <OSMMap userLocation={userLocation} />
-        <TouchableOpacity style={styles.locationButton} onPress={() => {}}>
-          <Ionicons name="locate" size={24} color="#2c7da0" />
-        </TouchableOpacity>
-      </View>
+        {/* Content */}
+        <View style={styles.content}>
+          <Text style={styles.greeting}>Hi Josefin</Text>
 
-      {/* Routes List */}
-      <FlatList
-        data={routes}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <BusCard route={item} onSelect={handleSelectBus} />}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          !locationPermission && (
-            <Text style={styles.locationWarning}>
-              Enable location to see nearby shuttles
-            </Text>
-          )
-        }
-      />
-    </View>
+          <LocationInput />
+
+          <Text style={styles.sectionTitle}>Our Services</Text>
+          {services.map((service, idx) => (
+            <ServiceCard
+              key={idx}
+              title={service.title}
+              subtitle={service.subtitle}
+              onPress={() => console.log('Service pressed')}
+            />
+          ))}
+
+          <Text style={styles.sectionTitle}>Select an offer:</Text>
+          {offers.map((offer) => (
+            <OfferCard
+              key={offer.id}
+              vehicle={offer.vehicle}
+              price={offer.price}
+              duration={offer.duration}
+              onSelect={() => handleSelectOffer(offer.route, offer.busType)}
+            />
+          ))}
+
+          <View style={styles.actionButtons}>
+            <TouchableOpacity style={styles.resetButton}>
+              <Text style={styles.resetText}>Reset Offer</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelButton}>
+              <Text style={styles.cancelText}>Cancel Trip</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.extraInfo}>₹5 more till arrival</Text>
+
+          <View style={styles.paymentRow}>
+            <Text style={styles.paymentLabel}>VISA®</Text>
+            <Text style={styles.paymentAmount}>₹15,000</Text>
+          </View>
+
+          <DriverInfo name="Mr. Ramiro Aldabarese" extra="4.9 ★" />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -67,33 +109,88 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   mapContainer: {
-    width: width,
-    height: height * 0.4,
-    position: 'relative',
+    width: '100%',
+    height: height * 0.4, // 40% of screen height
   },
-  locationButton: {
-    position: 'absolute',
-    bottom: 16,
-    right: 16,
-    backgroundColor: '#fff',
+  content: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  greeting: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 16,
+  },
+  resetButton: {
+    backgroundColor: '#e5e7eb',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     borderRadius: 30,
-    padding: 10,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    flex: 0.48,
+    alignItems: 'center',
   },
-  list: {
-    paddingVertical: 8,
+  resetText: {
+    color: '#374151',
+    fontSize: 14,
+    fontWeight: '600',
   },
-  locationWarning: {
+  cancelButton: {
+    backgroundColor: '#fee2e2',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+    flex: 0.48,
+    alignItems: 'center',
+  },
+  cancelText: {
+    color: '#ef4444',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  extraInfo: {
     textAlign: 'center',
-    color: '#ff6b6b',
-    padding: 10,
-    backgroundColor: '#fff0f0',
-    marginHorizontal: 16,
+    color: '#10b981',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginVertical: 12,
+  },
+  paymentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#e5e7eb',
     marginVertical: 8,
-    borderRadius: 8,
+  },
+  paymentLabel: {
+    fontSize: 16,
+    color: '#1f2937',
+    fontWeight: '500',
+  },
+  paymentAmount: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#10b981',
   },
 });

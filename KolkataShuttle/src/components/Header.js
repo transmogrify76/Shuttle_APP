@@ -1,35 +1,31 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
 export default function Header({ title }) {
   return (
-    <LinearGradient
-      colors={['#2c7da0', '#1f5e7a']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 0 }}
-      style={styles.gradient}
-    >
-      <SafeAreaView edges={['top']} style={styles.container}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
+      <View style={styles.container}>
         <Text style={styles.title}>{title}</Text>
-      </SafeAreaView>
-    </LinearGradient>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  gradient: {
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+  safeArea: {
+    backgroundColor: '#ffffff',
   },
   container: {
     paddingHorizontal: 20,
     paddingBottom: 16,
     paddingTop: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: '700',
+    color: '#1f2937',
+    letterSpacing: -0.5,
   },
 });

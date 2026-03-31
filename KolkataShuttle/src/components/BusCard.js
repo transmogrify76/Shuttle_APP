@@ -8,7 +8,7 @@ export default function BusCard({ route, onSelect }) {
       <View style={styles.header}>
         <Text style={styles.routeName}>{route.name}</Text>
         <View style={styles.timeContainer}>
-          <Ionicons name="time-outline" size={16} color="#666" />
+          <Ionicons name="time-outline" size={16} color="#aaa" />
           <Text style={styles.time}>{route.time}</Text>
         </View>
       </View>
@@ -21,13 +21,13 @@ export default function BusCard({ route, onSelect }) {
       <View style={styles.fareRow}>
         {route.busType === 'ac' || route.busType === 'both' ? (
           <TouchableOpacity style={styles.fareButton} onPress={() => onSelect(route, 'ac')}>
-            <Ionicons name="car-sport" size={18} color="#2c7da0" />
+            <Ionicons name="car-sport" size={18} color="#10b981" />
             <Text style={styles.fareText}>AC ₹{route.fare.ac}</Text>
           </TouchableOpacity>
         ) : null}
         {route.busType === 'nonAc' || route.busType === 'both' ? (
           <TouchableOpacity style={styles.fareButton} onPress={() => onSelect(route, 'nonAc')}>
-            <Ionicons name="bus" size={18} color="#2c7da0" />
+            <Ionicons name="bus" size={18} color="#10b981" />
             <Text style={styles.fareText}>Non‑AC ₹{route.fare.nonAc}</Text>
           </TouchableOpacity>
         ) : null}
@@ -38,16 +38,18 @@ export default function BusCard({ route, onSelect }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 24,
     padding: 16,
     marginHorizontal: 16,
     marginVertical: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
   },
   header: {
     flexDirection: 'row',
@@ -59,6 +61,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     flex: 1,
+    color: '#fff',
   },
   timeContainer: {
     flexDirection: 'row',
@@ -66,7 +69,7 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: 14,
-    color: '#666',
+    color: '#aaa',
     marginLeft: 4,
   },
   stopsContainer: {
@@ -75,11 +78,11 @@ const styles = StyleSheet.create({
   },
   stopsLabel: {
     fontSize: 14,
-    color: '#666',
+    color: '#aaa',
   },
   stops: {
     fontSize: 14,
-    color: '#333',
+    color: '#ddd',
     flex: 1,
   },
   fareRow: {
@@ -89,7 +92,7 @@ const styles = StyleSheet.create({
   fareButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f7fa',
+    backgroundColor: '#2a2a2a',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 25,
@@ -98,6 +101,6 @@ const styles = StyleSheet.create({
   fareText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2c7da0',
+    color: '#10b981',
   },
 });

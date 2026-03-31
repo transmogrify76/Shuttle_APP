@@ -10,9 +10,10 @@ export default function AppNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: '#fff' },
-        headerTitleStyle: { fontWeight: 'bold' },
+        headerStyle: { backgroundColor: '#000000' },
+        headerTitleStyle: { color: '#ffffff', fontWeight: 'bold' },
         headerBackTitleVisible: false,
+        headerTintColor: '#ffffff',
       }}
     >
       <Stack.Screen name="MainTabs" component={MainTabNavigator} options={{ headerShown: false }} />

@@ -14,11 +14,11 @@ export default function MyBookingsScreen() {
         </View>
       </View>
       <View style={styles.detailRow}>
-        <Ionicons name="calendar" size={16} color="#666" />
+        <Ionicons name="calendar" size={16} color="#6b7280" />
         <Text style={styles.detailText}>{item.date} at {item.time}</Text>
       </View>
       <View style={styles.detailRow}>
-        <Ionicons name="bus" size={16} color="#666" />
+        <Ionicons name="bus" size={16} color="#6b7280" />
         <Text style={styles.detailText}>{item.busType} | Seats: {item.seats.join(', ')} | ₹{item.fare}</Text>
       </View>
     </View>
@@ -29,7 +29,7 @@ export default function MyBookingsScreen() {
       <Header title="My Bookings" />
       {myBookings.length === 0 ? (
         <View style={styles.empty}>
-          <Ionicons name="calendar-outline" size={60} color="#ccc" />
+          <Ionicons name="calendar-outline" size={60} color="#d1d5db" />
           <Text style={styles.emptyText}>No bookings yet</Text>
         </View>
       ) : (
@@ -47,21 +47,21 @@ export default function MyBookingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8f9fa',
   },
   list: {
     padding: 16,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   header: {
     flexDirection: 'row',
@@ -73,6 +73,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     flex: 1,
+    color: '#1f2937',
   },
   statusBadge: {
     paddingHorizontal: 10,
@@ -80,15 +81,15 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   upcoming: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: '#d1fae5',
   },
   past: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f3f4f6',
   },
   statusText: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#2c7da0',
+    color: '#10b981',
   },
   detailRow: {
     flexDirection: 'row',
@@ -97,7 +98,7 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 14,
-    color: '#666',
+    color: '#6b7280',
     marginLeft: 8,
   },
   empty: {
@@ -107,7 +108,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#999',
+    color: '#9ca3af',
     marginTop: 12,
   },
 });
