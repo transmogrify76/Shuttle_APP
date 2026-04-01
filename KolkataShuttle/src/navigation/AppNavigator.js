@@ -7,6 +7,7 @@ import EmailEntryScreen from '../screens/EmailEntryScreen';
 import OTPVerificationScreen from '../screens/OTPVerificationScreen';
 import SeatSelectionScreen from '../screens/SeatSelectionScreen';
 import BookingConfirmationScreen from '../screens/BookingConfirmationScreen';
+import BookingDetailScreen from '../screens/BookingDetailScreen'; // new
 
 const Stack = createStackNavigator();
 
@@ -22,6 +23,7 @@ export default function AppNavigator() {
           <Stack.Screen name="MainTabs" component={MainTabNavigator} />
           <Stack.Screen name="SeatSelection" component={SeatSelectionScreen} />
           <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
+          <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
         </>
       ) : (
         <>
