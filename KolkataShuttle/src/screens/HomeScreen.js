@@ -8,43 +8,32 @@ import {
   Animated,
   Dimensions,
   PanResponder,
+  Alert,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import RazorpayCheckout from 'react-native-razorpay';
 import OSMMap from '../components/OSMMap';
 import AnimatedButton from '../components/AnimatedButton';
 import { useAuth } from '../context/AuthContext';
-import { routes } from '../utils/dummyData';
+import { listRoutes, listScheduledTrips, getRouteDetails } from '../services/routeApi';
+import { previewFare, createBooking, verifyBookingPayment } from '../services/bookingApi';
 
 const { height: screenHeight } = Dimensions.get('window');
 const BOTTOM_SHEET_MAX_HEIGHT = screenHeight * 0.65;
-const BOTTOM_SHEET_MIN_HEIGHT = screenHeight * 0.15;
 
-const RideCard = ({ name, price, duration, icon, selected, onPress }) => {
+// Ride Card Component
+const RideCard = ({ trip, selected, onPress }) => {
   const scale = useRef(new Animated.Value(1)).current;
+  const animateIn = () => Animated.spring(scale, { toValue: 0.98, useNativeDriver: true }).start();
+  const animateOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
 
-  const animateIn = () => {
-    Animated.spring(scale, {
-      toValue: 0.98,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const animateOut = () => {
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: true,
-    }).start();
-  };
-
+  const timeStr = new Date(trip.planned_start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   return (
-    <TouchableOpacity
-      activeOpacity={1}
-      onPressIn={animateIn}
-      onPressOut={animateOut}
-      onPress={onPress}
-    >
+    <TouchableOpacity activeOpacity={1} onPressIn={animateIn} onPressOut={animateOut} onPress={onPress}>
       <Animated.View
         style={[
           {
@@ -58,11 +47,6 @@ const RideCard = ({ name, price, duration, icon, selected, onPress }) => {
             borderWidth: 1,
             borderColor: selected ? '#000' : '#e5e5e5',
             backgroundColor: selected ? '#000' : '#fff',
-            shadowColor: selected ? '#000' : 'transparent',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: selected ? 0.1 : 0,
-            shadowRadius: 4,
-            elevation: selected ? 2 : 0,
           },
         ]}
       >
@@ -71,22 +55,66 @@ const RideCard = ({ name, price, duration, icon, selected, onPress }) => {
             className="w-12 h-12 rounded-full items-center justify-center"
             style={{ backgroundColor: selected ? '#fff' : '#f5f5f5' }}
           >
-            <Ionicons name={icon} size={24} color={selected ? '#000' : '#666'} />
+            <Ionicons name="bus-outline" size={24} color={selected ? '#000' : '#666'} />
           </View>
           <View className="ml-3">
             <Text className={`font-bold text-base ${selected ? 'text-white' : 'text-black'}`}>
-              {name}
+              {trip.route?.name || 'Bus'}
             </Text>
             <Text className={`text-xs ${selected ? 'text-gray-300' : 'text-gray-500'}`}>
-              {duration}
+              {timeStr} | {trip.available_seats} seats left
             </Text>
           </View>
         </View>
         <Text className={`font-bold text-lg ${selected ? 'text-white' : 'text-black'}`}>
-          ₹{price}
+          ₹{trip.base_fare || '--'}
         </Text>
       </Animated.View>
     </TouchableOpacity>
+  );
+};
+
+// Stop selector component (using modal)
+const StopSelector = ({ stops, selectedId, onSelect, label }) => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const selectedStop = stops.find(s => s.stop.id === selectedId);
+  return (
+    <>
+      <TouchableOpacity
+        className="flex-row items-center justify-between bg-gray-100 rounded-xl p-3 mb-2"
+        onPress={() => setModalVisible(true)}
+      >
+        <View className="flex-row items-center">
+          <Ionicons name="location-outline" size={20} color="#666" />
+          <Text className="ml-2 text-black flex-1">
+            {selectedStop ? selectedStop.stop.name : label}
+          </Text>
+        </View>
+        <Ionicons name="chevron-down" size={20} color="#666" />
+      </TouchableOpacity>
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-3xl p-5">
+            <Text className="text-xl font-bold mb-4">{label}</Text>
+            {stops.map(stop => (
+              <TouchableOpacity
+                key={stop.stop.id}
+                className="py-3 border-b border-gray-100"
+                onPress={() => {
+                  onSelect(stop.stop.id);
+                  setModalVisible(false);
+                }}
+              >
+                <Text className="text-black">{stop.stop.name}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity onPress={() => setModalVisible(false)} className="mt-4 py-3 bg-gray-200 rounded-full">
+              <Text className="text-center text-black">Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 };
 
@@ -96,51 +124,26 @@ export default function HomeScreen({ navigation }) {
   const firstName = user?.email?.split('@')[0] || 'User';
 
   const [userLocation, setUserLocation] = useState(null);
-  const [pickup, setPickup] = useState('');
-  const [destination, setDestination] = useState('');
-  const [selectedRide, setSelectedRide] = useState(null);
-  const [rides, setRides] = useState([]);
+  const [routesData, setRoutesData] = useState([]);
+  const [selectedRoute, setSelectedRoute] = useState(null);
+  const [stops, setStops] = useState([]);
+  const [trips, setTrips] = useState([]);
+  const [selectedTrip, setSelectedTrip] = useState(null);
+  const [pickupStopId, setPickupStopId] = useState(null);
+  const [dropoffStopId, setDropoffStopId] = useState(null);
+  const [fare, setFare] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [sheetVisible, setSheetVisible] = useState(true);
-
   const translateY = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === 'granted') {
-        const location = await Location.getCurrentPositionAsync({});
-        setUserLocation({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        });
-        setPickup('Your current location');
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (routes.length) {
-      const rideOptions = routes.map(route => ({
-        id: route.id,
-        name: route.name.split(' → ')[0],
-        price: route.fare.ac,
-        duration: route.time,
-        route,
-        busType: 'ac',
-        icon: 'bus-outline',
-      }));
-      setRides(rideOptions);
-      setSelectedRide(rideOptions[0]);
-    }
-  }, [routes]);
-
+  // Pan responder for bottom sheet
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dy > 0) {
           translateY.setValue(gestureState.dy);
-        } else if (gestureState.dy < 0 && translateY.__getValue() > - (BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT)) {
+        } else if (gestureState.dy < 0 && translateY.__getValue() > - (BOTTOM_SHEET_MAX_HEIGHT - 150)) {
           translateY.setValue(gestureState.dy);
         }
       },
@@ -149,13 +152,13 @@ export default function HomeScreen({ navigation }) {
           setSheetVisible(false);
         } else if (gestureState.dy < -50) {
           Animated.spring(translateY, {
-            toValue: - (BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT),
+            toValue: - (BOTTOM_SHEET_MAX_HEIGHT - 150),
             useNativeDriver: true,
           }).start();
         } else {
-          if (translateY.__getValue() < - (BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT) / 2) {
+          if (translateY.__getValue() < - (BOTTOM_SHEET_MAX_HEIGHT - 150) / 2) {
             Animated.spring(translateY, {
-              toValue: - (BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT),
+              toValue: - (BOTTOM_SHEET_MAX_HEIGHT - 150),
               useNativeDriver: true,
             }).start();
           } else {
@@ -169,6 +172,7 @@ export default function HomeScreen({ navigation }) {
     })
   ).current;
 
+  // Effect to animate sheet visibility
   useEffect(() => {
     if (sheetVisible) {
       Animated.spring(translateY, {
@@ -183,14 +187,143 @@ export default function HomeScreen({ navigation }) {
     }
   }, [sheetVisible]);
 
-  const handleConfirm = () => {
-    if (selectedRide && destination) {
-      navigation.navigate('SeatSelection', {
-        route: selectedRide.route,
-        busType: selectedRide.busType,
+  // Request location
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const location = await Location.getCurrentPositionAsync({});
+        setUserLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+      }
+    })();
+  }, []);
+
+  // Load routes on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        const { items } = await listRoutes(true);
+        setRoutesData(items);
+        if (items.length) setSelectedRoute(items[0]);
+      } catch (err) {
+        Alert.alert('Error', err.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  // When route changes, load its stops and trips
+  useEffect(() => {
+    if (!selectedRoute) return;
+    (async () => {
+      try {
+        setLoading(true);
+        // Fetch route details to get stops
+        const routeDetail = await getRouteDetails(selectedRoute.id);
+        setStops(routeDetail.stops.sort((a, b) => a.sequence_no - b.sequence_no));
+
+        // Fetch trips for this route
+        const { items } = await listScheduledTrips(selectedRoute.id, true);
+        setTrips(items);
+        if (items.length) setSelectedTrip(items[0]);
+      } catch (err) {
+        Alert.alert('Error', err.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [selectedRoute]);
+
+  // Fare preview when stops selected
+  useEffect(() => {
+    if (selectedTrip && pickupStopId && dropoffStopId) {
+      (async () => {
+        try {
+          const fareData = await previewFare({
+            route_id: selectedRoute.id,
+            pickup_stop_id: pickupStopId,
+            dropoff_stop_id: dropoffStopId,
+          });
+          setFare(fareData);
+        } catch (err) {
+          console.log(err);
+          setFare(null);
+        }
+      })();
+    } else {
+      setFare(null);
+    }
+  }, [selectedTrip, pickupStopId, dropoffStopId]);
+
+  const handleConfirm = async () => {
+    if (!selectedTrip || !pickupStopId || !dropoffStopId) {
+      Alert.alert('Missing Info', 'Please select pickup, dropoff and a ride');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // Create booking (returns payment order)
+      const { booking, payment_order } = await createBooking({
+        scheduled_trip_id: selectedTrip.id,
+        pickup_stop_id: pickupStopId,
+        dropoff_stop_id: dropoffStopId,
       });
+
+      // Initiate Razorpay payment
+      const options = {
+        description: `Kolkata Shuttle – ${selectedTrip.route?.name || 'Bus'}`,
+        image: 'https://your-logo.png',
+        currency: payment_order.currency,
+        key: payment_order.razorpay_key_id,
+        amount: payment_order.amount_subunits,
+        name: 'Kolkata Shuttle',
+        order_id: payment_order.razorpay_order_id,
+        prefill: {
+          email: user?.email,
+          contact: user?.phone || '',
+          name: user?.full_name || '',
+        },
+        theme: { color: '#000000' },
+      };
+
+      const paymentData = await RazorpayCheckout.open(options);
+      // Payment succeeded, verify with backend
+      const verifyResult = await verifyBookingPayment(booking.id, {
+        razorpay_order_id: payment_order.razorpay_order_id,
+        razorpay_payment_id: paymentData.razorpay_payment_id,
+        razorpay_signature: paymentData.razorpay_signature,
+      });
+      Alert.alert('Success', 'Booking confirmed!');
+      navigation.navigate('BookingConfirmation', {
+        route: { name: selectedTrip.route?.name, time: selectedTrip.planned_start_at },
+        busType: 'AC', // or get from vehicle
+        seats: ['1'],   // dummy
+        fare: fare.amount,
+      });
+    } catch (error) {
+      if (error.code === 'PAYMENT_CANCELLED') {
+        Alert.alert('Payment cancelled', 'You can try again later.');
+      } else {
+        Alert.alert('Error', error.message || 'Booking failed');
+      }
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (loading && !routesData.length) {
+    return (
+      <View className="flex-1 bg-black justify-center items-center">
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-black">
@@ -220,57 +353,70 @@ export default function HomeScreen({ navigation }) {
           <View className="w-10 h-1 bg-gray-300 rounded-full" />
         </View>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
-        >
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
           <Text className="text-4xl font-bold text-black mb-4">Where to, {firstName}?</Text>
 
-          <View className="bg-gray-100 rounded-2xl mb-6 py-2">
-            <View className="flex-row items-center px-4 py-3 border-b border-gray-200">
-              <Ionicons name="location-outline" size={20} color="#000" />
-              <TextInput
-                className="flex-1 text-black ml-3 text-base"
-                placeholder="Pickup location"
-                placeholderTextColor="#666"
-                value={pickup}
-                onChangeText={setPickup}
-              />
-            </View>
-            <View className="flex-row items-center px-4 py-3">
-              <Ionicons name="navigate-outline" size={20} color="#000" />
-              <TextInput
-                className="flex-1 text-black ml-3 text-base"
-                placeholder="Destination"
-                placeholderTextColor="#666"
-                value={destination}
-                onChangeText={setDestination}
-              />
-            </View>
-          </View>
+          {/* Route selector */}
+          <Text className="text-black font-medium mb-1">Select Route</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+            {routesData.map(route => (
+              <TouchableOpacity
+                key={route.id}
+                onPress={() => setSelectedRoute(route)}
+                className={`px-4 py-2 rounded-full mr-2 ${selectedRoute?.id === route.id ? 'bg-black' : 'bg-gray-100'}`}
+              >
+                <Text className={selectedRoute?.id === route.id ? 'text-white' : 'text-black'}>
+                  {route.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
-          <Text className="text-black text-lg font-semibold mb-3">Choose a ride</Text>
-          {rides.map(ride => (
-            <RideCard
-              key={ride.id}
-              name={ride.name}
-              price={ride.price}
-              duration={ride.duration}
-              icon={ride.icon}
-              selected={selectedRide?.id === ride.id}
-              onPress={() => setSelectedRide(ride)}
-            />
-          ))}
+          {/* Pickup & dropoff stops */}
+          <Text className="text-black font-medium mb-1">Pickup Stop</Text>
+          <StopSelector
+            stops={stops}
+            selectedId={pickupStopId}
+            onSelect={setPickupStopId}
+            label="Select pickup stop"
+          />
+
+          <Text className="text-black font-medium mt-2 mb-1">Dropoff Stop</Text>
+          <StopSelector
+            stops={stops}
+            selectedId={dropoffStopId}
+            onSelect={setDropoffStopId}
+            label="Select dropoff stop"
+          />
+
+          {fare && (
+            <View className="bg-gray-100 p-4 rounded-2xl mt-4">
+              <Text className="text-black font-bold text-lg">Fare: ₹{fare.amount}</Text>
+              <Text className="text-gray-600 text-sm">{fare.route_name} – from stop {fare.pickup_sequence_no} to {fare.dropoff_sequence_no}</Text>
+            </View>
+          )}
+
+          <Text className="text-black text-lg font-semibold mt-6 mb-3">Available Rides</Text>
+          {trips.length === 0 ? (
+            <Text className="text-gray-500 text-center py-4">No trips available for this route.</Text>
+          ) : (
+            trips.map(trip => (
+              <RideCard
+                key={trip.id}
+                trip={trip}
+                selected={selectedTrip?.id === trip.id}
+                onPress={() => setSelectedTrip(trip)}
+              />
+            ))
+          )}
 
           <AnimatedButton
-            title={`Confirm ₹${selectedRide ? selectedRide.price : ''}`}
+            title={`Confirm ₹${fare?.amount || '0'}`}
             onPress={handleConfirm}
-            disabled={!selectedRide || !destination}
+            disabled={!selectedTrip || !pickupStopId || !dropoffStopId || !fare}
             style={{ marginTop: 20 }}
           />
-          <Text className="text-center text-gray-500 text-xs mt-4">
-            Scheduled rides available
-          </Text>
+          <Text className="text-center text-gray-500 text-xs mt-4">Scheduled rides available</Text>
         </ScrollView>
       </Animated.View>
 
