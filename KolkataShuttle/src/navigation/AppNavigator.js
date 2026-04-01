@@ -5,18 +5,24 @@ import MainTabNavigator from './MainTabNavigator';
 import LandingScreen from '../screens/LandingScreen';
 import EmailEntryScreen from '../screens/EmailEntryScreen';
 import OTPVerificationScreen from '../screens/OTPVerificationScreen';
+import SeatSelectionScreen from '../screens/SeatSelectionScreen';
+import BookingConfirmationScreen from '../screens/BookingConfirmationScreen';
 
 const Stack = createStackNavigator();
 
 export default function AppNavigator() {
   const { user, loading } = useAuth();
 
-  if (loading) return null; // or a splash screen
+  if (loading) return null;
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {user ? (
-        <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+        <>
+          <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+          <Stack.Screen name="SeatSelection" component={SeatSelectionScreen} />
+          <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
+        </>
       ) : (
         <>
           <Stack.Screen name="Landing" component={LandingScreen} />

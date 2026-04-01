@@ -1,28 +1,23 @@
 import React from 'react';
-import { View, FlatList, StyleSheet } from 'react-native';
+import { View, FlatList } from 'react-native';
 import Header from '../components/Header';
-import BusCard from '../components/BusCard';
+import RouteCard from '../components/RouteCard';
 import { routes } from '../utils/dummyData';
 
 export default function SelectRouteScreen({ navigation }) {
-  const handleSelectBus = (route, busType) => {
-    navigation.navigate('SeatSelection', { route, busType });
+  const handleSelect = (route) => {
+    navigation.navigate('SeatSelection', { route, busType: route.busType === 'both' ? 'ac' : route.busType });
   };
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-black">
       <Header title="Select Route" />
       <FlatList
         data={routes}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <BusCard route={item} onSelect={handleSelectBus} />}
-        contentContainerStyle={styles.list}
+        renderItem={({ item }) => <RouteCard route={item} onSelect={handleSelect} />}
+        contentContainerClassName="py-4"
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000000' },
-  list: { paddingVertical: 8 },
-});

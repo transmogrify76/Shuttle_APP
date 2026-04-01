@@ -1,7 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-
 import HomeScreen from '../screens/HomeScreen';
 import MyBookingsScreen from '../screens/MyBookingsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -23,15 +22,12 @@ export default function MainTabNavigator() {
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#10b981',
-        tabBarInactiveTintColor: '#6b7280',
+        tabBarActiveTintColor: '#fff',
+        tabBarInactiveTintColor: '#666',
         tabBarStyle: {
-          backgroundColor: '#000000',
+          backgroundColor: '#000',
           borderTopWidth: 0,
-          elevation: 8,
-          shadowColor: '#000',
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
+          elevation: 0,
           height: 60,
           paddingBottom: 8,
           paddingTop: 8,

@@ -8,7 +8,6 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load token and user on app start
   useEffect(() => {
     loadStoredData();
   }, []);
@@ -29,7 +28,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signup = async (email, otp, role) => {
-    const response = await fetch('http://192.168.0.187:9830/auth/signup', {
+    const response = await fetch('http://your-api-url/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, otp, role }),
@@ -46,7 +45,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, otp) => {
-    const response = await fetch('http://192.168.0.187:9830/auth/login', {
+    const response = await fetch('http://your-api-url/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, otp }),
@@ -63,7 +62,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    // Optionally call /auth/logout with token
     await AsyncStorage.removeItem('access_token');
     await AsyncStorage.removeItem('user');
     setToken(null);
@@ -73,7 +71,7 @@ export const AuthProvider = ({ children }) => {
   const sendOTP = async (email, role = null) => {
     const endpoint = role ? '/auth/signup/send-otp' : '/auth/login/send-otp';
     const body = role ? { email, role } : { email };
-    const response = await fetch(`http://192.168.0.187:9830${endpoint}`, {
+    const response = await fetch(`http://your-api-url${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

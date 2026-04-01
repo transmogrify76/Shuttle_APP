@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
-import { Text, Button, TextInput } from 'react-native-paper';
+import { View, Text, TextInput, Alert, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AnimatedButton from '../components/AnimatedButton';
 import { useAuth } from '../context/AuthContext';
 
 export default function OTPVerificationScreen({ route }) {
+  const insets = useSafeAreaInsets();
   const { email, flow, role } = route.params;
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const inputs = useRef([]);
@@ -14,10 +16,7 @@ export default function OTPVerificationScreen({ route }) {
     const newOtp = [...otp];
     newOtp[index] = text;
     setOtp(newOtp);
-
-    if (text && index < 5) {
-      inputs.current[index + 1]?.focus();
-    }
+    if (text && index < 5) inputs.current[index + 1]?.focus();
   };
 
   const handleKeyPress = (e, index) => {
@@ -32,7 +31,6 @@ export default function OTPVerificationScreen({ route }) {
       Alert.alert('Error', 'Please enter the 6-digit OTP');
       return;
     }
-
     setLoading(true);
     let result;
     if (flow === 'signup') {
@@ -41,106 +39,42 @@ export default function OTPVerificationScreen({ route }) {
       result = await login(email, otpString);
     }
     setLoading(false);
-
     if (!result.success) {
       Alert.alert('Error', result.error);
     }
-    // If success, the auth state updates and AppNavigator will automatically switch to the authenticated stack.
-    // No manual navigation needed.
-  };
-
-  const resendOTP = async () => {
-    // Implement resend OTP logic if needed
   };
 
   return (
-    <View style={styles.container}>
-      <Text variant="headlineMedium" style={styles.title}>Enter OTP</Text>
-      <Text variant="bodyMedium" style={styles.subtitle}>
+    <View className="flex-1 bg-black px-6" style={{ paddingTop: insets.top + 20 }}>
+      <Text className="text-white text-2xl font-bold mb-2">Enter OTP</Text>
+      <Text className="text-gray-400 text-base mb-8">
         We've sent a 6-digit code to {email}
       </Text>
 
-      <View style={styles.otpContainer}>
+      <View className="flex-row justify-between mb-8">
         {otp.map((digit, index) => (
           <TextInput
             key={index}
             ref={(ref) => (inputs.current[index] = ref)}
-            style={styles.otpInput}
+            className="w-12 h-12 bg-gray-900 text-white rounded-xl text-center text-xl"
             value={digit}
             onChangeText={(text) => handleChange(text, index)}
             onKeyPress={(e) => handleKeyPress(e, index)}
             keyboardType="number-pad"
             maxLength={1}
-            mode="outlined"
-            outlineColor="#ddd"
-            activeOutlineColor="#000"
-            textColor="#000"
           />
         ))}
       </View>
 
-      <Button
-        mode="contained"
+      <AnimatedButton
+        title={loading ? 'Verifying...' : 'Verify'}
         onPress={handleSubmit}
-        loading={loading}
         disabled={loading}
-        style={styles.button}
-        buttonColor="#000"
-        labelStyle={styles.buttonLabel}
-      >
-        Verify
-      </Button>
+      />
 
-      <Button
-        mode="text"
-        onPress={resendOTP}
-        style={styles.resendButton}
-        labelStyle={styles.resendLabel}
-      >
-        Resend OTP
-      </Button>
+      <TouchableOpacity className="mt-4" onPress={() => {}}>
+        <Text className="text-gray-400 text-center">Resend OTP</Text>
+      </TouchableOpacity>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    backgroundColor: '#fff',
-  },
-  title: {
-    marginTop: 40,
-    marginBottom: 8,
-    color: '#000',
-  },
-  subtitle: {
-    marginBottom: 32,
-    color: '#666',
-  },
-  otpContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 32,
-  },
-  otpInput: {
-    width: 48,
-    textAlign: 'center',
-    backgroundColor: '#fff',
-  },
-  button: {
-    borderRadius: 30,
-    paddingVertical: 4,
-    marginBottom: 12,
-  },
-  buttonLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  resendButton: {
-    alignSelf: 'center',
-  },
-  resendLabel: {
-    color: '#666',
-  },
-});

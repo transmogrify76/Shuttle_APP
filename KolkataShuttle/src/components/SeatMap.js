@@ -1,11 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
-
-const { width } = Dimensions.get('window');
-const SEAT_SIZE = (width - 80) / 5; // Roughly 1/5 of width minus margins
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
 
 const SeatMap = ({ bookedSeats = [], onSeatSelect }) => {
   const [selectedSeats, setSelectedSeats] = useState([]);
+  const animatedValues = useRef({});
 
   const handleSeatPress = (seatId) => {
     if (bookedSeats.includes(seatId)) return;
@@ -19,6 +17,20 @@ const SeatMap = ({ bookedSeats = [], onSeatSelect }) => {
     if (onSeatSelect) onSeatSelect(newSelected);
   };
 
+  const getAnimatedStyle = (seatId) => {
+    if (!animatedValues.current[seatId]) {
+      animatedValues.current[seatId] = new Animated.Value(1);
+    }
+    return { transform: [{ scale: animatedValues.current[seatId] }] };
+  };
+
+  const animateSeat = (seatId, toValue) => {
+    Animated.spring(animatedValues.current[seatId], {
+      toValue,
+      useNativeDriver: true,
+    }).start();
+  };
+
   const renderSeat = (row, col) => {
     const seatId = `${row}${String.fromCharCode(65 + col)}`;
     const isBooked = bookedSeats.includes(seatId);
@@ -26,16 +38,21 @@ const SeatMap = ({ bookedSeats = [], onSeatSelect }) => {
     return (
       <TouchableOpacity
         key={seatId}
-        style={[
-          styles.seat,
-          { width: SEAT_SIZE, height: SEAT_SIZE },
-          isBooked && styles.booked,
-          isSelected && styles.selected,
-        ]}
         onPress={() => handleSeatPress(seatId)}
+        onPressIn={() => animateSeat(seatId, 0.9)}
+        onPressOut={() => animateSeat(seatId, 1)}
         disabled={isBooked}
       >
-        <Text style={styles.seatText}>{seatId}</Text>
+        <Animated.View
+          style={[
+            styles.seat,
+            isBooked && styles.booked,
+            isSelected && styles.selected,
+            getAnimatedStyle(seatId),
+          ]}
+        >
+          <Text style={styles.seatText}>{seatId}</Text>
+        </Animated.View>
       </TouchableOpacity>
     );
   };
@@ -72,7 +89,7 @@ const SeatMap = ({ bookedSeats = [], onSeatSelect }) => {
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#000',
   },
   legend: {
     flexDirection: 'row',
@@ -91,17 +108,17 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   availableBox: {
-    backgroundColor: '#e5e7eb',
+    backgroundColor: '#333',
   },
   selectedBox: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#fff',
   },
   bookedBox: {
     backgroundColor: '#ef4444',
   },
   legendText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#aaa',
   },
   row: {
     flexDirection: 'row',
@@ -112,20 +129,22 @@ const styles = StyleSheet.create({
     width: 30,
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#6b7280',
+    color: '#aaa',
   },
   seat: {
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: '#333',
     marginHorizontal: 4,
   },
   booked: {
     backgroundColor: '#ef4444',
   },
   selected: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#fff',
   },
   seatText: {
     fontSize: 12,

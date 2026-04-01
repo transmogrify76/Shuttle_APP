@@ -1,16 +1,21 @@
 import React from 'react';
 import { View, Text, FlatList } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/Header';
 import { myBookings } from '../utils/dummyData';
 
 export default function MyBookingsScreen() {
+  const insets = useSafeAreaInsets();
+
   const renderItem = ({ item }) => (
-    <View className="bg-gray-900 rounded-xl p-4 mb-3 border border-gray-800">
+    <View className="bg-gray-900 rounded-xl p-4 mb-3 mx-4">
       <View className="flex-row justify-between items-center mb-3">
         <Text className="text-white font-bold text-base flex-1">{item.routeName}</Text>
-        <View className={`px-3 py-1 rounded-full ${item.status === 'upcoming' ? 'bg-green-900' : 'bg-gray-800'}`}>
-          <Text className="text-green-500 text-xs font-bold">{item.status.toUpperCase()}</Text>
+        <View className={`px-3 py-1 rounded-full ${item.status === 'upcoming' ? 'bg-white' : 'bg-gray-800'}`}>
+          <Text className={`text-xs font-bold ${item.status === 'upcoming' ? 'text-black' : 'text-gray-400'}`}>
+            {item.status.toUpperCase()}
+          </Text>
         </View>
       </View>
       <View className="flex-row items-center mt-1">
@@ -37,7 +42,7 @@ export default function MyBookingsScreen() {
           data={myBookings}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerClassName="p-4"
+          contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
         />
       )}
     </View>

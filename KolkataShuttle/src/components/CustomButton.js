@@ -11,7 +11,7 @@ export default function CustomButton({ title, onPress, disabled, loading, classN
       className={className}
     >
       <LinearGradient
-        colors={disabled ? ['#333', '#222'] : ['#10b981', '#059669']}
+        colors={disabled ? ['#334155', '#1e293b'] : ['#3b82f6', '#8b5cf6']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         className="py-3.5 rounded-full items-center justify-center"
