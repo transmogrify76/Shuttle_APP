@@ -1,7 +1,6 @@
 import React from 'react';
-import { SafeAreaView } from 'react-native';
 import { Appbar } from 'react-native-paper';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 export default function Header({ title }) {
   return (
     <SafeAreaView edges={['top']} style={{ backgroundColor: '#000' }}>
