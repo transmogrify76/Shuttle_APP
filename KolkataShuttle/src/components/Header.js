@@ -1,12 +1,12 @@
 import React from 'react';
-import { Appbar } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, SafeAreaView } from 'react-native';
+
 export default function Header({ title }) {
   return (
-    <SafeAreaView edges={['top']} style={{ backgroundColor: '#000' }}>
-      <Appbar.Header style={{ backgroundColor: '#000', elevation: 0 }}>
-        <Appbar.Content title={title} titleStyle={{ color: '#fff', fontWeight: 'bold' }} />
-      </Appbar.Header>
+    <SafeAreaView className="bg-black">
+      <View className="px-5 py-3 border-b border-gray-800">
+        <Text className="text-white text-2xl font-bold">{title}</Text>
+      </View>
     </SafeAreaView>
   );
 }

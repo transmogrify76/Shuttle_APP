@@ -1,43 +1,46 @@
 import React from 'react';
-import { View, ScrollView } from 'react-native';
-import { Text, Card, List, Avatar } from 'react-native-paper';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/Header';
+import { useAuth } from '../context/AuthContext';
 
 export default function ProfileScreen() {
-  const profile = {
-    name: 'Rahul Sharma',
-    email: 'rahul.sharma@example.com',
-    phone: '+91 98765 43210',
-  };
+  const { user, logout } = useAuth();
 
   const menuItems = [
-    { icon: 'credit-card', label: 'Payment Methods' },
-    { icon: 'help-circle', label: 'Help & Support' },
-    { icon: 'cog', label: 'Settings' },
-    { icon: 'logout', label: 'Logout', color: '#ef4444' },
+    { icon: 'card-outline', label: 'Payment Methods' },
+    { icon: 'help-circle-outline', label: 'Help & Support' },
+    { icon: 'settings-outline', label: 'Settings' },
+    { icon: 'log-out-outline', label: 'Logout', color: '#ef4444', onPress: logout },
   ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
+    <View className="flex-1 bg-black">
       <Header title="Profile" />
       <ScrollView>
-        <Card style={{ margin: 16, backgroundColor: '#1a1a1a', alignItems: 'center', paddingVertical: 16 }}>
-          <Avatar.Text size={80} label={profile.name.charAt(0)} style={{ backgroundColor: '#10b981' }} />
-          <Text variant="titleLarge" style={{ color: '#fff', marginTop: 12 }}>{profile.name}</Text>
-          <Text variant="bodyMedium" style={{ color: '#aaa', marginTop: 4 }}>{profile.email}</Text>
-          <Text variant="bodyMedium" style={{ color: '#aaa' }}>{profile.phone}</Text>
-        </Card>
+        <View className="items-center py-6 border-b border-gray-800">
+          <View className="w-20 h-20 rounded-full bg-green-500 justify-center items-center mb-3">
+            <Text className="text-white text-3xl font-bold">{user?.email?.charAt(0).toUpperCase() || 'U'}</Text>
+          </View>
+          <Text className="text-white text-xl font-bold">{user?.email?.split('@')[0] || 'User'}</Text>
+          <Text className="text-gray-400 text-sm mt-1">{user?.email}</Text>
+        </View>
 
-        {menuItems.map((item, idx) => (
-          <List.Item
-            key={idx}
-            title={item.label}
-            titleStyle={{ color: item.color || '#fff' }}
-            left={props => <List.Icon {...props} icon={item.icon} color={item.color || '#10b981'} />}
-            right={props => <List.Icon {...props} icon="chevron-right" color="#666" />}
-            style={{ borderBottomWidth: 1, borderBottomColor: '#2a2a2a', marginHorizontal: 16 }}
-          />
-        ))}
+        <View className="mt-4 px-4">
+          {menuItems.map((item, idx) => (
+            <TouchableOpacity
+              key={idx}
+              className="flex-row items-center py-4 border-b border-gray-800"
+              onPress={item.onPress}
+            >
+              <Ionicons name={item.icon} size={24} color={item.color || '#10b981'} />
+              <Text className={`flex-1 text-base ml-3 ${item.color ? 'text-red-500' : 'text-white'}`}>
+                {item.label}
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#555" />
+            </TouchableOpacity>
+          ))}
+        </View>
       </ScrollView>
     </View>
   );
