@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../config/api';
 
 const AuthContext = createContext();
 
@@ -28,7 +29,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signup = async (email, otp, role) => {
-    const response = await fetch('http://your-api-url/auth/signup', {
+    const response = await fetch(`${API_BASE_URL}/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, otp, role }),
@@ -45,7 +46,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, otp) => {
-    const response = await fetch('http://your-api-url/auth/login', {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, otp }),
@@ -71,7 +72,7 @@ export const AuthProvider = ({ children }) => {
   const sendOTP = async (email, role = null) => {
     const endpoint = role ? '/auth/signup/send-otp' : '/auth/login/send-otp';
     const body = role ? { email, role } : { email };
-    const response = await fetch(`http://your-api-url${endpoint}`, {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
