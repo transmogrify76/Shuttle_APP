@@ -476,7 +476,7 @@ export default function HomeScreen({ navigation }) {
         </ScrollView>
       </Animated.View>
 
-      {/* Floating button to reopen sheet */}
+
       {!sheetVisible && (
         <TouchableOpacity
           className="absolute bottom-6 right-6 bg-white rounded-full p-3 shadow-lg"
