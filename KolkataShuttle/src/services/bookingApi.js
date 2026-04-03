@@ -58,13 +58,13 @@ export const listBookings = async (status = null) => {
 };
 
 // Upcoming bookings
-export const getUpcomingBookings = async () => {
-  const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/passenger/bookings/upcoming`, { headers });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.detail?.message || 'Failed to fetch upcoming bookings');
-  return data;
-};
+// export const getUpcomingBookings = async () => {
+//   const headers = await getAuthHeaders();
+//   const response = await fetch(`${API_BASE_URL}/passenger/bookings/upcoming`, { headers });
+//   const data = await response.json();
+//   if (!response.ok) throw new Error(data.detail?.message || 'Failed to fetch upcoming bookings');
+//   return data;
+// };
 
 // Current bookings (boarding or started)
 export const getCurrentBookings = async () => {
@@ -76,13 +76,13 @@ export const getCurrentBookings = async () => {
 };
 
 // 12.23 Passenger history
-export const getPassengerHistory = async () => {
-  const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/passenger/history`, { headers });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.detail?.message || 'Failed to fetch history');
-  return data;
-};
+// export const getPassengerHistory = async () => {
+//   const headers = await getAuthHeaders();
+//   const response = await fetch(`${API_BASE_URL}/passenger/history`, { headers });
+//   const data = await response.json();
+//   if (!response.ok) throw new Error(data.detail?.message || 'Failed to fetch history');
+//   return data;
+// };
 
 // 12.24 Booking detail
 export const getBookingDetail = async (bookingId) => {
@@ -133,5 +133,21 @@ export const getBookingRating = async (bookingId) => {
   const response = await fetch(`${API_BASE_URL}/passenger/bookings/${bookingId}/rating`, { headers });
   const data = await response.json();
   if (!response.ok) throw new Error(data.detail?.message || 'Failed to fetch rating');
+  return data;
+};
+
+export const getUpcomingBookings = async () => {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_BASE_URL}/passenger/bookings/upcoming`, { headers });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail?.message || 'Failed to fetch upcoming bookings');
+  return data; // { items, count }
+};
+
+export const getPassengerHistory = async () => {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_BASE_URL}/passenger/history`, { headers });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail?.message || 'Failed to fetch history');
   return data;
 };
