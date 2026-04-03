@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import RazorpayCheckout from 'react-native-razorpay';
 import Header from '../components/Header';
 import SeatMap from '../components/SeatMap';
 import CustomButton from '../components/CustomButton';
+import RazorpayWebView from '../components/RazorpayWebView';
 import { useAuth } from '../context/AuthContext';
 import { createBooking, verifyBookingPayment } from '../services/bookingApi';
 
@@ -21,14 +21,13 @@ export default function SeatSelectionScreen({ route, navigation }) {
 
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [currentBooking, setCurrentBooking] = useState(null);
+  const [currentPaymentOrder, setCurrentPaymentOrder] = useState(null);
 
-  // Fetch booked seats for this trip (you'll need an API for that)
-  // For now, use dummy data
-  const bookedSeats = ['2A', '3B', '5C']; // Replace with API call
+  const bookedSeats = ['2A', '3B', '5C']; // Replace later
 
-  const handleSeatSelect = (seats) => {
-    setSelectedSeats(seats);
-  };
+  const handleSeatSelect = (seats) => setSelectedSeats(seats);
 
   const handleConfirm = async () => {
     if (selectedSeats.length === 0) {
@@ -38,42 +37,28 @@ export default function SeatSelectionScreen({ route, navigation }) {
 
     setLoading(true);
     try {
-      // Create booking (returns payment order)
       const { booking, payment_order } = await createBooking({
         scheduled_trip_id: scheduledTrip.id,
         pickup_stop_id: pickupStopId,
         dropoff_stop_id: dropoffStopId,
       });
+      setCurrentBooking(booking);
+      setCurrentPaymentOrder(payment_order);
+      setPaymentModalVisible(true);
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Booking creation failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      // Optional: store selected seats in booking metadata (if backend supports)
-      // For now, we'll just proceed with payment
-
-      // Initiate Razorpay payment
-      const options = {
-        description: `Kolkata Shuttle – ${routeName || 'Bus'}`,
-        image: 'https://your-logo.png',
-        currency: payment_order.currency,
-        key: payment_order.razorpay_key_id,
-        amount: payment_order.amount_subunits,
-        name: 'Kolkata Shuttle',
-        order_id: payment_order.razorpay_order_id,
-        prefill: {
-          email: user?.email,
-          contact: user?.phone || '',
-          name: user?.full_name || '',
-        },
-        theme: { color: '#000000' },
-      };
-
-      const paymentData = await RazorpayCheckout.open(options);
-
-      // Verify payment with backend
-      await verifyBookingPayment(booking.id, {
-        razorpay_order_id: payment_order.razorpay_order_id,
+  const handlePaymentSuccess = async (paymentData) => {
+    try {
+      await verifyBookingPayment(currentBooking.id, {
+        razorpay_order_id: currentPaymentOrder.razorpay_order_id,
         razorpay_payment_id: paymentData.razorpay_payment_id,
         razorpay_signature: paymentData.razorpay_signature,
       });
-
       Alert.alert('Success', 'Booking confirmed!');
       navigation.navigate('BookingConfirmation', {
         route: { name: routeName, time: scheduledTrip.planned_start_at },
@@ -82,15 +67,30 @@ export default function SeatSelectionScreen({ route, navigation }) {
         fare: fareAmount,
       });
     } catch (error) {
-      if (error.code === 'PAYMENT_CANCELLED') {
-        Alert.alert('Payment cancelled', 'You can try again later.');
-      } else {
-        Alert.alert('Error', error.message || 'Booking failed');
-      }
+      Alert.alert('Error', error.message || 'Payment verification failed');
     } finally {
-      setLoading(false);
+      setPaymentModalVisible(false);
     }
   };
+
+  const handlePaymentError = (errorMsg) => {
+    Alert.alert('Payment Error', errorMsg);
+    setPaymentModalVisible(false);
+  };
+
+  const paymentOrderData = currentPaymentOrder ? {
+    key: currentPaymentOrder.razorpay_key_id,
+    amount: currentPaymentOrder.amount_subunits,
+    currency: currentPaymentOrder.currency,
+    order_id: currentPaymentOrder.razorpay_order_id,
+    name: 'Kolkata Shuttle',
+    description: `Kolkata Shuttle – ${routeName || 'Bus'}`,
+    prefill: {
+      email: user?.email,
+      contact: user?.phone || '',
+      name: user?.full_name || '',
+    },
+  } : null;
 
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
@@ -101,9 +101,6 @@ export default function SeatSelectionScreen({ route, navigation }) {
           <Text className="text-green-500 text-base mt-1">Scheduled Trip</Text>
           <Text className="text-gray-400 text-sm mt-1">
             {new Date(scheduledTrip.planned_start_at).toLocaleString()}
-          </Text>
-          <Text className="text-gray-400 text-sm mt-1">
-            Pickup stop ID: {pickupStopId} → Dropoff stop ID: {dropoffStopId}
           </Text>
         </View>
 
@@ -121,6 +118,16 @@ export default function SeatSelectionScreen({ route, navigation }) {
           className="mx-4 mb-6"
         />
       </ScrollView>
+
+      {paymentOrderData && (
+        <RazorpayWebView
+          visible={paymentModalVisible}
+          onClose={() => setPaymentModalVisible(false)}
+          onSuccess={handlePaymentSuccess}
+          onError={handlePaymentError}
+          orderData={paymentOrderData}
+        />
+      )}
     </View>
   );
 }
