@@ -1,25 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, ActivityIndicator, Alert, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, Alert, TouchableOpacity, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
-import { getUpcomingBookings, getPassengerHistory } from '../services/bookingApi';
+import { getUpcomingBookings, getPassengerHistory, getDriverVehicleInfo } from '../services/bookingApi';
 
-const StatusBadge = ({ status }) => {
-  let config = {
-    booked: { bg: 'bg-green-500/20', text: 'text-green-400', icon: 'checkmark-circle', label: 'Confirmed' },
-    pending_payment: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', icon: 'time', label: 'Pending' },
-    completed: { bg: 'bg-blue-500/20', text: 'text-blue-400', icon: 'checkmark-done', label: 'Completed' },
-    cancelled: { bg: 'bg-red-500/20', text: 'text-red-400', icon: 'close-circle', label: 'Cancelled' },
-    missed: { bg: 'bg-red-500/20', text: 'text-red-400', icon: 'alert-circle', label: 'Missed' },
-  };
-  const c = config[status] || config.booked;
+const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
+  if (!driverInfo) return null;
   return (
-    <View className={`flex-row items-center px-3 py-1 rounded-full ${c.bg}`}>
-      <Ionicons name={c.icon} size={12} color={c.text.replace('text-', '')} />
-      <Text className={`text-xs font-bold ml-1 ${c.text}`}>{c.label}</Text>
-    </View>
+    <Modal visible={visible} transparent animationType="slide">
+      <View className="flex-1 bg-black/50 justify-center items-center p-5">
+        <View className="bg-white rounded-2xl p-5 w-full">
+          <Text className="text-xl font-bold mb-4">Driver & Vehicle</Text>
+          <Text className="font-bold">Driver: {driverInfo.driver_name || 'N/A'}</Text>
+          <Text className="text-gray-600 mt-1">
+            Rating: {driverInfo.driver_average_rating?.toFixed(1)} ({driverInfo.driver_rating_count} reviews)
+          </Text>
+          <Text className="font-bold mt-3">Vehicle</Text>
+          <Text>{driverInfo.vehicle_name || 'Bus'}</Text>
+          <Text className="text-gray-600">{driverInfo.vehicle_model} ({driverInfo.vehicle_color})</Text>
+          <Text className="text-gray-600">Reg: {driverInfo.vehicle_registration_number || 'N/A'}</Text>
+          <TouchableOpacity onPress={onClose} className="mt-4 py-2 bg-black rounded-full">
+            <Text className="text-white text-center">Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
   );
 };
 
@@ -28,8 +34,10 @@ export default function MyBookingsScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState('upcoming');
   const [upcoming, setUpcoming] = useState([]);
   const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [driverModalVisible, setDriverModalVisible] = useState(false);
+  const [currentDriverInfo, setCurrentDriverInfo] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -47,7 +55,7 @@ export default function MyBookingsScreen({ navigation }) {
         setHistory(items || []);
       }
     } catch (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', error.message || 'Unable to load bookings');
     } finally {
       if (refresh) setRefreshing(false);
       else setLoading(false);
@@ -56,70 +64,73 @@ export default function MyBookingsScreen({ navigation }) {
 
   const onRefresh = () => loadData(true);
 
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-  };
-
-  const formatTime = (dateStr) => {
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  const showDriverInfo = async (tripId) => {
+    if (!tripId) return;
+    try {
+      const info = await getDriverVehicleInfo(tripId);
+      setCurrentDriverInfo(info);
+      setDriverModalVisible(true);
+    } catch (err) {
+      Alert.alert('Error', 'Could not fetch driver info');
+    }
   };
 
   const renderBookingItem = ({ item }) => {
     const pickupName = item.pickup_stop?.stop?.name || 'Pickup';
     const dropoffName = item.dropoff_stop?.stop?.name || 'Dropoff';
-    const date = formatDate(item.created_at);
-    const time = formatTime(item.created_at);
-    const seats = item.seats ? item.seats.join(', ') : '—';
+    const status = item.booking_status || 'unknown';
+    const vehicleInfo = 'Shuttle'; // fallback
+    let statusColor = 'bg-gray-800';
+    let statusTextColor = 'text-gray-400';
+    if (status === 'booked' || status === 'pending_payment') {
+      statusColor = 'bg-green-900';
+      statusTextColor = 'text-green-400';
+    } else if (status === 'completed') {
+      statusColor = 'bg-blue-900';
+      statusTextColor = 'text-blue-400';
+    } else if (status === 'cancelled' || status === 'missed') {
+      statusColor = 'bg-red-900';
+      statusTextColor = 'text-red-400';
+    }
 
     return (
       <TouchableOpacity
-        activeOpacity={0.8}
         onPress={() => navigation.navigate('BookingDetail', { bookingId: item.id })}
-        className="mx-4 mb-4"
+        className="bg-gray-900 rounded-xl p-4 mb-3 mx-4 border border-gray-800"
       >
-        <LinearGradient
-          colors={['#1a1a1a', '#0d0d0d']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          className="rounded-2xl p-4 border border-gray-800"
-        >
-          <View className="flex-row justify-between items-start mb-3">
-            <View className="flex-1">
-              <Text className="text-white font-bold text-base">{pickupName}</Text>
-              <View className="flex-row items-center my-1">
-                <Ionicons name="arrow-down" size={14} color="#666" />
-                <Text className="text-gray-400 text-xs ml-1">to</Text>
-              </View>
-              <Text className="text-white font-bold text-base">{dropoffName}</Text>
-            </View>
-            <StatusBadge status={item.booking_status} />
+        <View className="flex-row justify-between items-center mb-2">
+          <Text className="text-white font-bold text-base flex-1">
+            {pickupName} → {dropoffName}
+          </Text>
+          <View className={`px-3 py-1 rounded-full ${statusColor}`}>
+            <Text className={`text-xs font-bold ${statusTextColor}`}>
+              {status.replace('_', ' ').toUpperCase()}
+            </Text>
           </View>
-
-          <View className="flex-row items-center mt-2 pt-2 border-t border-gray-800">
-            <View className="flex-row items-center mr-4">
-              <Ionicons name="calendar-outline" size={14} color="#aaa" />
-              <Text className="text-gray-400 text-xs ml-1">{date}</Text>
-            </View>
-            <View className="flex-row items-center mr-4">
-              <Ionicons name="time-outline" size={14} color="#aaa" />
-              <Text className="text-gray-400 text-xs ml-1">{time}</Text>
-            </View>
-            <View className="flex-row items-center">
-              <Ionicons name="cash-outline" size={14} color="#aaa" />
-              <Text className="text-gray-400 text-xs ml-1">₹{item.fare_amount}</Text>
-            </View>
-          </View>
-
-          <View className="flex-row justify-between items-center mt-3">
-            <View className="flex-row items-center">
-              <Ionicons name="bus-outline" size={14} color="#aaa" />
-              <Text className="text-gray-400 text-xs ml-1">Seats: {seats}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#666" />
-          </View>
-        </LinearGradient>
+        </View>
+        <View className="flex-row items-center mb-1">
+          <Ionicons name="bus-outline" size={14} color="#aaa" />
+          <Text className="text-gray-400 text-sm ml-2">{vehicleInfo}</Text>
+        </View>
+        <View className="flex-row items-center mb-1">
+          <Ionicons name="time-outline" size={14} color="#aaa" />
+          <Text className="text-gray-400 text-sm ml-2">
+            {new Date(item.created_at).toLocaleDateString()}
+          </Text>
+        </View>
+        <View className="flex-row items-center mb-1">
+          <Ionicons name="cash-outline" size={14} color="#aaa" />
+          <Text className="text-gray-400 text-sm ml-2">₹{item.fare_amount}</Text>
+        </View>
+        {item.scheduled_trip_id && (
+          <TouchableOpacity
+            onPress={() => showDriverInfo(item.scheduled_trip_id)}
+            className="mt-2 flex-row items-center"
+          >
+            <Ionicons name="car-outline" size={14} color="#aaa" />
+            <Text className="text-gray-400 text-xs ml-1">View driver & vehicle</Text>
+          </TouchableOpacity>
+        )}
       </TouchableOpacity>
     );
   };
@@ -131,12 +142,13 @@ export default function MyBookingsScreen({ navigation }) {
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <Header title="My Bookings" />
 
-      <View className="flex-row border-b border-gray-800 mx-4 mt-2">
+      {/* Tabs */}
+      <View className="flex-row border-b border-gray-800">
         <TouchableOpacity
           onPress={() => setActiveTab('upcoming')}
           className={`flex-1 py-3 ${activeTab === 'upcoming' ? 'border-b-2 border-white' : ''}`}
         >
-          <Text className={`text-center font-semibold ${activeTab === 'upcoming' ? 'text-white' : 'text-gray-500'}`}>
+          <Text className={`text-center ${activeTab === 'upcoming' ? 'text-white font-bold' : 'text-gray-500'}`}>
             Upcoming
           </Text>
         </TouchableOpacity>
@@ -144,26 +156,21 @@ export default function MyBookingsScreen({ navigation }) {
           onPress={() => setActiveTab('history')}
           className={`flex-1 py-3 ${activeTab === 'history' ? 'border-b-2 border-white' : ''}`}
         >
-          <Text className={`text-center font-semibold ${activeTab === 'history' ? 'text-white' : 'text-gray-500'}`}>
+          <Text className={`text-center ${activeTab === 'history' ? 'text-white font-bold' : 'text-gray-500'}`}>
             History
           </Text>
         </TouchableOpacity>
       </View>
 
-      {loading ? (
+      {loading && !refreshing ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#fff" />
         </View>
       ) : isEmpty ? (
-        <View className="flex-1 justify-center items-center px-8">
-          <Ionicons name="calendar-outline" size={80} color="#333" />
-          <Text className="text-gray-500 text-lg font-semibold mt-4 text-center">
+        <View className="flex-1 justify-center items-center">
+          <Ionicons name="calendar-outline" size={60} color="#444" />
+          <Text className="text-gray-500 text-base mt-3">
             No {activeTab === 'upcoming' ? 'upcoming' : 'past'} bookings
-          </Text>
-          <Text className="text-gray-600 text-sm mt-2 text-center">
-            {activeTab === 'upcoming' 
-              ? 'You have no upcoming trips. Book a ride from the home screen.' 
-              : 'Your past trips will appear here.'}
           </Text>
         </View>
       ) : (
@@ -172,11 +179,16 @@ export default function MyBookingsScreen({ navigation }) {
           keyExtractor={(item) => item.id}
           renderItem={renderBookingItem}
           contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
-          }
+          refreshing={refreshing}
+          onRefresh={onRefresh}
         />
       )}
+
+      <DriverInfoModal
+        visible={driverModalVisible}
+        onClose={() => setDriverModalVisible(false)}
+        driverInfo={currentDriverInfo}
+      />
     </View>
   );
 }
