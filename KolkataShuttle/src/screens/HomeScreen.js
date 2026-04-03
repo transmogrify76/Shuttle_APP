@@ -29,6 +29,7 @@ import {
   createBooking,
   verifyBookingPayment,
 } from '../services/bookingApi';
+import { getRouteBetweenStops } from '../services/routingApi';
 
 const { height: screenHeight } = Dimensions.get('window');
 const BOTTOM_SHEET_MAX_HEIGHT = screenHeight * 0.65;
@@ -177,6 +178,9 @@ export default function HomeScreen({ navigation }) {
   const [sheetVisible, setSheetVisible] = useState(true);
   const translateY = useRef(new Animated.Value(0)).current;
 
+  // Route drawing state
+  const [routeCoordinates, setRouteCoordinates] = useState([]);
+
   // Pan responder for bottom sheet
   const panResponder = useRef(
     PanResponder.create({
@@ -269,6 +273,32 @@ export default function HomeScreen({ navigation }) {
     })();
   }, [selectedRoute]);
 
+  // Fetch route between pickup and dropoff stops and draw on map
+  useEffect(() => {
+    if (pickupStopId && dropoffStopId && stops.length) {
+      const pickupStop = stops.find(s => s.stop.id === pickupStopId);
+      const dropoffStop = stops.find(s => s.stop.id === dropoffStopId);
+      if (pickupStop && dropoffStop) {
+        (async () => {
+          try {
+            const coords = await getRouteBetweenStops(
+              parseFloat(pickupStop.stop.lat),
+              parseFloat(pickupStop.stop.lng),
+              parseFloat(dropoffStop.stop.lat),
+              parseFloat(dropoffStop.stop.lng)
+            );
+            setRouteCoordinates(coords);
+          } catch (err) {
+            console.warn('Failed to fetch route:', err);
+            setRouteCoordinates([]);
+          }
+        })();
+      }
+    } else {
+      setRouteCoordinates([]);
+    }
+  }, [pickupStopId, dropoffStopId, stops]);
+
   // Recalculate fare when stops or trip change
   useEffect(() => {
     if (selectedTrip && pickupStopId && dropoffStopId) {
@@ -290,72 +320,26 @@ export default function HomeScreen({ navigation }) {
     }
   }, [selectedTrip, pickupStopId, dropoffStopId, selectedRoute]);
 
-  const handleConfirm = async () => {
-    if (!selectedTrip || !pickupStopId || !dropoffStopId) {
-      Alert.alert('Missing Info', 'Please select pickup, dropoff and a ride');
-      return;
-    }
+  const handleConfirm = () => {
+  if (!selectedTrip || !pickupStopId || !dropoffStopId || !fare) {
+    Alert.alert('Missing Info', 'Please select pickup, dropoff and a ride');
+    return;
+  }
 
-    try {
-      setLoading(true);
-      // 1. Create booking (returns payment order)
-      const { booking, payment_order } = await createBooking({
-        scheduled_trip_id: selectedTrip.id,
-        pickup_stop_id: pickupStopId,
-        dropoff_stop_id: dropoffStopId,
-      });
-
-      // 2. Initiate Razorpay payment
-      const options = {
-        description: `Kolkata Shuttle – ${selectedTrip.route?.name || 'Bus'}`,
-        image: 'https://your-logo.png', // Replace with actual logo URL
-        currency: payment_order.currency,
-        key: payment_order.razorpay_key_id,
-        amount: payment_order.amount_subunits,
-        name: 'Kolkata Shuttle',
-        order_id: payment_order.razorpay_order_id,
-        prefill: {
-          email: user?.email,
-          contact: user?.phone || '',
-          name: user?.full_name || '',
-        },
-        theme: { color: '#000000' },
-      };
-
-      const paymentData = await RazorpayCheckout.open(options);
-
-      // 3. Verify payment with backend
-      const verifyResult = await verifyBookingPayment(booking.id, {
-        razorpay_order_id: payment_order.razorpay_order_id,
-        razorpay_payment_id: paymentData.razorpay_payment_id,
-        razorpay_signature: paymentData.razorpay_signature,
-      });
-
-      Alert.alert('Success', 'Booking confirmed!');
-      navigation.navigate('BookingConfirmation', {
-        route: {
-          name: selectedTrip.route?.name || 'Bus',
-          time: selectedTrip.planned_start_at,
-        },
-        busType: 'AC', // You can derive from vehicle if needed
-        seats: ['1'], // dummy, since seats are not selected in this flow
-        fare: fare?.amount,
-      });
-    } catch (error) {
-      if (error.code === 'PAYMENT_CANCELLED') {
-        Alert.alert('Payment cancelled', 'You can try again later.');
-      } else {
-        Alert.alert('Error', error.message || 'Booking failed');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Navigate to seat selection with all required data
+  navigation.navigate('SeatSelection', {
+    scheduledTrip: selectedTrip,
+    pickupStopId,
+    dropoffStopId,
+    fareAmount: fare.amount,
+    routeName: selectedRoute?.name,
+  });
+};
 
   return (
     <View className="flex-1 bg-black">
       <View style={{ flex: 1, paddingTop: insets.top }}>
-        <OSMMap userLocation={null} />
+        <OSMMap routeCoordinates={routeCoordinates} />
       </View>
 
       <Animated.View
@@ -475,7 +459,6 @@ export default function HomeScreen({ navigation }) {
           </Text>
         </ScrollView>
       </Animated.View>
-
 
       {!sheetVisible && (
         <TouchableOpacity
