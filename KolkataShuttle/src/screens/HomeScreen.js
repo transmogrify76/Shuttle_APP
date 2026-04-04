@@ -30,7 +30,7 @@ const { height: screenHeight } = Dimensions.get('window');
 const BOTTOM_SHEET_MAX_HEIGHT = screenHeight * 0.65;
 const BOTTOM_SHEET_MIN_HEIGHT = screenHeight * 0.15;
 
-// ----- Stop Selector Modal Component (keys fixed) -----
+// ----- Stop Selector Modal Component -----
 const StopSelector = ({ stops, selectedId, onSelect, label }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const selectedStop = stops?.find(s => s.stop?.id === selectedId);
@@ -81,8 +81,8 @@ const StopSelector = ({ stops, selectedId, onSelect, label }) => {
   );
 };
 
-// ----- Ride Card Component -----
-const RideCard = ({ trip, selected, onPress, onViewStops, onInfoPress, availableSeats }) => {
+// ----- Ride Card Component (updated to show total and available seats) -----
+const RideCard = ({ trip, selected, onPress, onViewStops, onInfoPress, seatInfo }) => {
   const scale = useRef(new Animated.Value(1)).current;
   const animateIn = () => Animated.spring(scale, { toValue: 0.98, useNativeDriver: true }).start();
   const animateOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
@@ -90,15 +90,16 @@ const RideCard = ({ trip, selected, onPress, onViewStops, onInfoPress, available
   const vehicle = trip?.vehicle || {};
   const vehicleName = vehicle?.vehicle_name || vehicle?.registration_number || 'Bus';
   const hasAC = vehicle?.has_ac;
-  const seatCount = vehicle?.seat_count;
   const startTime = trip?.planned_start_at
     ? new Date(trip.planned_start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : 'TBD';
   const fromStop = trip?.trip_from_stop?.name || '?';
   const toStop = trip?.trip_to_stop?.name || '?';
 
-  const seatsDisplay = availableSeats !== undefined
-    ? `${availableSeats} seats left`
+  const totalSeats = seatInfo?.total ?? '?';
+  const availableSeats = seatInfo?.available ?? '?';
+  const seatsDisplay = seatInfo
+    ? `Total: ${totalSeats} seats | Available: ${availableSeats}`
     : 'Checking availability...';
 
   return (
@@ -136,7 +137,7 @@ const RideCard = ({ trip, selected, onPress, onViewStops, onInfoPress, available
                 )}
               </View>
               <Text className={`text-xs ${selected ? 'text-gray-300' : 'text-gray-500'}`}>
-                Starts at {startTime} • {seatCount} seats
+                Starts at {startTime}
               </Text>
               <Text className={`text-xs ${selected ? 'text-gray-400' : 'text-gray-500'}`}>
                 {fromStop} → {toStop}
@@ -166,7 +167,7 @@ const RideCard = ({ trip, selected, onPress, onViewStops, onInfoPress, available
   );
 };
 
-// ----- Modal for showing trip stops (keys fixed) -----
+// ----- Modal for showing trip stops -----
 const TripStopModal = ({ visible, onClose, stops }) => {
   if (!stops) return null;
   return (
@@ -212,7 +213,7 @@ const TripStopModal = ({ visible, onClose, stops }) => {
   );
 };
 
-// ----- Driver/Vehicle Info Modal -----
+// ----- Driver/Vehicle Info Modal (updated to show total seats) -----
 const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
   if (!driverInfo) return null;
   return (
@@ -228,6 +229,7 @@ const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
           <Text>{driverInfo.vehicle_name || 'Bus'}</Text>
           <Text className="text-gray-600">{driverInfo.vehicle_model} ({driverInfo.vehicle_color})</Text>
           <Text className="text-gray-600">Reg: {driverInfo.vehicle_registration_number || 'N/A'}</Text>
+          <Text className="text-gray-600">Total seats: {driverInfo.vehicle_total_seat || '?'}</Text>
           <TouchableOpacity onPress={onClose} className="mt-4 py-2 bg-black rounded-full">
             <Text className="text-white text-center">Close</Text>
           </TouchableOpacity>
@@ -257,14 +259,14 @@ export default function HomeScreen({ navigation }) {
   const [selectedTripStops, setSelectedTripStops] = useState([]);
   const [driverModalVisible, setDriverModalVisible] = useState(false);
   const [currentDriverInfo, setCurrentDriverInfo] = useState(null);
-  const [legAvailability, setLegAvailability] = useState({});
+  const [legAvailability, setLegAvailability] = useState({}); // { tripId: { available, total } }
   const [loadingSeats, setLoadingSeats] = useState(false);
 
   // UI states
   const [sheetVisible, setSheetVisible] = useState(true);
   const translateY = useRef(new Animated.Value(0)).current;
 
-  // Pan responder (unchanged)
+  // Pan responder
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -314,7 +316,7 @@ export default function HomeScreen({ navigation }) {
     }
   }, [sheetVisible]);
 
-  // Load routes on mount
+  // Load routes
   useEffect(() => {
     (async () => {
       try {
@@ -327,7 +329,7 @@ export default function HomeScreen({ navigation }) {
     })();
   }, []);
 
-  // When route changes, fetch its stops and scheduled trips
+  // Load stops & trips for selected route
   useEffect(() => {
     if (!selectedRoute) return;
     (async () => {
@@ -389,7 +391,10 @@ export default function HomeScreen({ navigation }) {
             pickupStopId,
             dropoffStopId
           );
-          results[trip.id] = seatInfo.available_seats;
+          results[trip.id] = {
+            available: seatInfo.available_seats,
+            total: seatInfo.seat_capacity,
+          };
         } catch (err) {
           results[trip.id] = null;
         }
@@ -500,7 +505,7 @@ export default function HomeScreen({ navigation }) {
         >
           <Text className="text-4xl font-bold text-black mb-4">Where to, {firstName}?</Text>
 
-          {/* Route selector (horizontal scroll) – key fixed */}
+          {/* Route selector */}
           <Text className="text-black font-medium mb-1">Select Route</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
             {routesData.map((route, idx) => (
@@ -548,7 +553,7 @@ export default function HomeScreen({ navigation }) {
             </View>
           )}
 
-          {/* Available rides – key fixed */}
+          {/* Available rides */}
           <Text className="text-black text-lg font-semibold mt-6 mb-3">Available Buses</Text>
           {loading && trips.length === 0 ? (
             <ActivityIndicator size="large" color="#000" />
@@ -569,7 +574,7 @@ export default function HomeScreen({ navigation }) {
                   setTripStopModalVisible(true);
                 }}
                 onInfoPress={() => showDriverInfo(trip.id)}
-                availableSeats={legAvailability[trip.id]}
+                seatInfo={legAvailability[trip.id]}
               />
             ))
           )}
