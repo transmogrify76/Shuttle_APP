@@ -503,7 +503,7 @@ export default function HomeScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
         >
-          <Text className="text-4xl font-bold text-black mb-4">Where to, {firstName}?</Text>
+          <Text className="text-4xl font-bold text-black mb-4">Where to?</Text>
 
           {/* Route selector */}
           <Text className="text-black font-medium mb-1">Select Route</Text>
