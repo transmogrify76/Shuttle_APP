@@ -143,3 +143,11 @@ export const getDriverVehicleInfo = async (tripId) => {
   const response = await fetch(url, { headers });
   return handleResponse(response, url);
 };
+
+export const getBookingCurrentStatus = async (bookingId) => {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_BASE_URL}/passenger/bookings/${bookingId}/current-status`, { headers });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail?.message || 'Failed to fetch current status');
+  return data;
+};

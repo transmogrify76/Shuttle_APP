@@ -30,7 +30,7 @@ const getImageUrl = (path) => {
   return `${API_BASE_URL}${path}`;
 };
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }) {  // ← added navigation prop
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
 
@@ -166,6 +166,7 @@ export default function ProfileScreen() {
     { icon: 'card-outline', label: 'Payment Methods' },
     { icon: 'help-circle-outline', label: 'Help & Support' },
     { icon: 'settings-outline', label: 'Settings' },
+    { icon: 'chatbubble-outline', label: 'Support', onPress: () => navigation.navigate('SupportTickets') },
     { icon: 'log-out-outline', label: 'Logout', color: '#ef4444', onPress: logout },
   ];
 

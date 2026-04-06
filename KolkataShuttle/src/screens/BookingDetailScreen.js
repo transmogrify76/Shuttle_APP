@@ -28,8 +28,8 @@ import {
 export default function BookingDetailScreen({ route, navigation }) {
   const { bookingId } = route.params;
   const insets = useSafeAreaInsets();
-  const [status, setStatus] = useState(null);
-  const [booking, setBooking] = useState(null);
+  const [status, setStatus] = useState(null); // live status
+  const [booking, setBooking] = useState(null); // fallback
   const [qrData, setQrData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
@@ -50,11 +50,10 @@ export default function BookingDetailScreen({ route, navigation }) {
       setLoading(true);
       // Try live status first
       try {
-        const liveStatus = await getBookingCurrentStatus(bookingId);
-        setStatus(liveStatus);
-        // Also fetch driver info from the trip
-        if (liveStatus.scheduled_trip_id) {
-          const info = await getDriverVehicleInfo(liveStatus.scheduled_trip_id);
+        const live = await getBookingCurrentStatus(bookingId);
+        setStatus(live);
+        if (live.scheduled_trip_id) {
+          const info = await getDriverVehicleInfo(live.scheduled_trip_id);
           setDriverVehicleInfo(info);
         }
       } catch (e) {
@@ -67,7 +66,7 @@ export default function BookingDetailScreen({ route, navigation }) {
         }
       }
 
-      // Fetch QR
+      // Fetch QR (optional)
       try {
         const qr = await getBookingQR(bookingId);
         setQrData(qr);
@@ -87,29 +86,25 @@ export default function BookingDetailScreen({ route, navigation }) {
   };
 
   const handleCancel = async () => {
-    Alert.alert(
-      'Cancel Booking',
-      'Are you sure?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes',
-          style: 'destructive',
-          onPress: async () => {
-            setCancelling(true);
-            try {
-              await cancelBooking(bookingId);
-              Alert.alert('Cancelled', 'Booking cancelled.');
-              navigation.goBack();
-            } catch (error) {
-              Alert.alert('Error', error.message);
-            } finally {
-              setCancelling(false);
-            }
-          },
+    Alert.alert('Cancel Booking', 'Are you sure?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes',
+        style: 'destructive',
+        onPress: async () => {
+          setCancelling(true);
+          try {
+            await cancelBooking(bookingId);
+            Alert.alert('Cancelled', 'Booking cancelled.');
+            navigation.goBack();
+          } catch (error) {
+            Alert.alert('Error', error.message);
+          } finally {
+            setCancelling(false);
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleShareQR = async () => {
@@ -146,14 +141,15 @@ export default function BookingDetailScreen({ route, navigation }) {
     );
   }
 
+  // Use live status if available, else fallback to booking detail
   const displayData = status || booking;
   const trip = displayData?.scheduled_trip || displayData;
   const canCancel = displayData?.booking_status === 'booked' || displayData?.booking_status === 'pending_payment';
   const canRate = displayData?.booking_status === 'completed' && !existingRating;
-  const liveProgress = status;
+  const liveProgress = status; // only if we have the live endpoint data
 
-  const pickupStopName = displayData?.pickup_stop?.stop?.name || 'Pickup location';
-  const dropoffStopName = displayData?.dropoff_stop?.stop?.name || 'Dropoff location';
+  const pickupStopName = displayData?.pickup_stop?.stop?.name || displayData?.pickup_stop?.name || 'Pickup';
+  const dropoffStopName = displayData?.dropoff_stop?.stop?.name || displayData?.dropoff_stop?.name || 'Dropoff';
   const tripStartTime = trip?.planned_start_at ? new Date(trip.planned_start_at).toLocaleString() : 'Not scheduled';
 
   return (
@@ -206,6 +202,9 @@ export default function BookingDetailScreen({ route, navigation }) {
                 {driverVehicleInfo.vehicle_model} ({driverVehicleInfo.vehicle_color})
               </Text>
             )}
+            <Text className="text-gray-400 text-xs ml-7">
+              Total seats: {driverVehicleInfo.vehicle_total_seat || '?'}
+            </Text>
           </View>
         )}
 
@@ -245,10 +244,10 @@ export default function BookingDetailScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* Live Progress */}
+        {/* Live Progress (if available from the new API) */}
         {liveProgress && (
           <View className="bg-gray-900 rounded-2xl p-4 mb-4">
-            <Text className="text-white text-lg font-bold mb-2">Live Progress</Text>
+            <Text className="text-white text-lg font-bold mb-2">Live Trip Status</Text>
             <View className="flex-row justify-between mb-3">
               <Text className="text-gray-400">
                 Boarding: {liveProgress.boarding_scan_completed ? '✅ Completed' : '⏳ Not yet'}
@@ -257,22 +256,78 @@ export default function BookingDetailScreen({ route, navigation }) {
                 Drop: {liveProgress.drop_scan_completed ? '✅ Completed' : '⏳ Not yet'}
               </Text>
             </View>
+            {liveProgress.trip_completed && (
+              <Text className="text-green-500 text-sm mb-2">Trip completed</Text>
+            )}
             {liveProgress.current_progress_stop && (
               <View className="bg-gray-800 rounded-xl p-3 mb-3">
                 <Text className="text-white text-sm">Current stop:</Text>
                 <Text className="text-white font-bold">{liveProgress.current_progress_stop.stop?.name}</Text>
-                <Text className="text-yellow-400 text-xs">Status: {liveProgress.current_progress_stop.event_status}</Text>
+                <Text className="text-yellow-400 text-xs">
+                  Status: {liveProgress.current_progress_stop.event_status}
+                </Text>
+                {liveProgress.current_progress_stop.actual_time && (
+                  <Text className="text-gray-400 text-xs">
+                    Actual time: {new Date(liveProgress.current_progress_stop.actual_time).toLocaleTimeString()}
+                  </Text>
+                )}
               </View>
             )}
-            <Text className="text-white text-sm font-semibold mb-2">Upcoming stops:</Text>
-            {liveProgress.segment_stops?.filter(s => s.stop_status === 'upcoming').slice(0, 3).map((stop, idx) => (
-              <View key={idx} className="flex-row items-center mb-2">
-                <Ionicons name="radio-button-off" size={14} color="#aaa" />
-                <Text className="text-gray-400 text-xs ml-2">
-                  {stop.stop?.name} – in ~{stop.assume_time_diff_minutes} min
-                </Text>
+
+            {/* Segment stops list (only the passenger's segment) */}
+            {liveProgress.segment_stops && liveProgress.segment_stops.length > 0 && (
+              <View>
+                <Text className="text-white text-sm font-semibold mb-2">Your segment stops</Text>
+                {liveProgress.segment_stops.map((stop, idx) => {
+                  let statusColor = 'text-gray-400';
+                  let statusIcon = 'radio-button-off-outline';
+                  if (stop.stop_status === 'boarded_here') {
+                    statusColor = 'text-green-500';
+                    statusIcon = 'checkmark-circle-outline';
+                  } else if (stop.stop_status === 'dropped_here') {
+                    statusColor = 'text-blue-500';
+                    statusIcon = 'flag-outline';
+                  } else if (stop.stop_status === 'arrived') {
+                    statusColor = 'text-yellow-500';
+                    statusIcon = 'location-outline';
+                  } else if (stop.stop_status === 'departed') {
+                    statusColor = 'text-purple-500';
+                    statusIcon = 'car-outline';
+                  }
+                  return (
+                    <View key={stop.route_stop_id || idx} className="flex-row items-start mb-3">
+                      <Ionicons name={statusIcon} size={16} color="#aaa" className="mt-0.5" />
+                      <View className="flex-1 ml-2">
+                        <View className="flex-row justify-between">
+                          <Text className={`text-sm font-medium ${statusColor}`}>
+                            {stop.stop.name}
+                          </Text>
+                          <Text className="text-gray-400 text-xs">
+                            {stop.planned_time_at_stop
+                              ? new Date(stop.planned_time_at_stop).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                              : '--:--'}
+                          </Text>
+                        </View>
+                        <Text className="text-gray-500 text-xs">
+                          {stop.assume_time_diff_minutes !== null ? `${stop.assume_time_diff_minutes} min` : ''}
+                          {stop.estimated_time_at_stop && ` • Est. ${new Date(stop.estimated_time_at_stop).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                        </Text>
+                        {stop.actual_arrival_time && (
+                          <Text className="text-green-600 text-xs">
+                            Arrived: {new Date(stop.actual_arrival_time).toLocaleTimeString()}
+                          </Text>
+                        )}
+                        {stop.actual_departure_time && (
+                          <Text className="text-blue-600 text-xs">
+                            Departed: {new Date(stop.actual_departure_time).toLocaleTimeString()}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })}
               </View>
-            ))}
+            )}
           </View>
         )}
 
@@ -322,7 +377,7 @@ export default function BookingDetailScreen({ route, navigation }) {
             <Text className="text-xl font-bold mb-4">Rate your trip</Text>
             <Text className="font-medium mb-1">Trip rating</Text>
             <View className="flex-row justify-center mb-4">
-              {[1,2,3,4,5].map(star => (
+              {[1, 2, 3, 4, 5].map(star => (
                 <TouchableOpacity key={star} onPress={() => setTripRating(star)}>
                   <Ionicons name={star <= tripRating ? 'star' : 'star-outline'} size={32} color="#fbbf24" className="mx-1" />
                 </TouchableOpacity>
@@ -330,13 +385,20 @@ export default function BookingDetailScreen({ route, navigation }) {
             </View>
             <Text className="font-medium mb-1">Driver rating</Text>
             <View className="flex-row justify-center mb-4">
-              {[1,2,3,4,5].map(star => (
+              {[1, 2, 3, 4, 5].map(star => (
                 <TouchableOpacity key={star} onPress={() => setDriverRating(star)}>
                   <Ionicons name={star <= driverRating ? 'star' : 'star-outline'} size={32} color="#fbbf24" className="mx-1" />
                 </TouchableOpacity>
               ))}
             </View>
-            <TextInput className="border border-gray-300 rounded-xl p-3 mb-4" placeholder="Write a review (optional)" value={reviewText} onChangeText={setReviewText} multiline numberOfLines={3} />
+            <TextInput
+              className="border border-gray-300 rounded-xl p-3 mb-4"
+              placeholder="Write a review (optional)"
+              value={reviewText}
+              onChangeText={setReviewText}
+              multiline
+              numberOfLines={3}
+            />
             <View className="flex-row justify-between">
               <TouchableOpacity onPress={() => setRatingModalVisible(false)} className="px-6 py-2 rounded-full bg-gray-200">
                 <Text className="text-black">Cancel</Text>

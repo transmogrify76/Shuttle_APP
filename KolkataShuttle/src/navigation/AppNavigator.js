@@ -7,7 +7,10 @@ import EmailEntryScreen from '../screens/EmailEntryScreen';
 import OTPVerificationScreen from '../screens/OTPVerificationScreen';
 import SeatSelectionScreen from '../screens/SeatSelectionScreen';
 import BookingConfirmationScreen from '../screens/BookingConfirmationScreen';
-import BookingDetailScreen from '../screens/BookingDetailScreen'; // new
+import BookingDetailScreen from '../screens/BookingDetailScreen';
+import SupportTicketsScreen from '../screens/SupportTicketsScreen';
+import TicketDetailScreen from '../screens/TicketDetailScreen';
+import CreateTicketScreen from '../screens/CreateTicketScreen';
 
 const Stack = createStackNavigator();
 
@@ -24,6 +27,9 @@ export default function AppNavigator() {
           <Stack.Screen name="SeatSelection" component={SeatSelectionScreen} />
           <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
           <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
+          <Stack.Screen name="SupportTickets" component={SupportTicketsScreen} />
+          <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
+          <Stack.Screen name="CreateTicket" component={CreateTicketScreen} />
         </>
       ) : (
         <>
