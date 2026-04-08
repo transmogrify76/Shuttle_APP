@@ -11,6 +11,7 @@ import BookingDetailScreen from '../screens/BookingDetailScreen';
 import SupportTicketsScreen from '../screens/SupportTicketsScreen';
 import TicketDetailScreen from '../screens/TicketDetailScreen';
 import CreateTicketScreen from '../screens/CreateTicketScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 
 const Stack = createStackNavigator();
 
@@ -30,6 +31,7 @@ export default function AppNavigator() {
           <Stack.Screen name="SupportTickets" component={SupportTicketsScreen} />
           <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
           <Stack.Screen name="CreateTicket" component={CreateTicketScreen} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} />
         </>
       ) : (
         <>

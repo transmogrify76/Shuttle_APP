@@ -1,42 +1,31 @@
-import React, { useRef } from 'react';
-import { View, Text, TouchableOpacity, Animated } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../context/AuthContext';
+import React from 'react';
+import { View, Text, TouchableOpacity, SafeAreaView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { useNotifications } from '../context/NotificationContext';
 
 export default function Header({ title }) {
-  const insets = useSafeAreaInsets();
-  const { user } = useAuth();
-  const scale = useRef(new Animated.Value(1)).current;
-
-  const animateAvatar = () => {
-    Animated.sequence([
-      Animated.spring(scale, { toValue: 1.1, useNativeDriver: true }),
-      Animated.spring(scale, { toValue: 1, useNativeDriver: true }),
-    ]).start();
-  };
+  const navigation = useNavigation();
+  const { unreadCount } = useNotifications();
 
   return (
-    <View style={{ paddingTop: insets.top }} className="bg-black">
-      <View className="flex-row justify-between items-center px-5 py-4 border-b border-gray-800">
+    <SafeAreaView className="bg-black">
+      <View className="flex-row justify-between items-center px-5 py-3 border-b border-gray-800">
         <Text className="text-white text-2xl font-bold">{title}</Text>
-        <TouchableOpacity onPress={animateAvatar}>
-          <Animated.View
-            style={{
-              transform: [{ scale }],
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: '#333',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          >
-            <Text className="text-white font-bold">
-              {user?.email?.charAt(0).toUpperCase() || 'U'}
-            </Text>
-          </Animated.View>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Notifications')}
+          className="relative"
+        >
+          <Ionicons name="notifications-outline" size={24} color="#fff" />
+          {unreadCount > 0 && (
+            <View className="absolute -top-1 -right-1 bg-red-500 rounded-full w-4 h-4 items-center justify-center">
+              <Text className="text-white text-[10px] font-bold">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }

@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/Header';
 import { getUpcomingBookings, getPassengerHistory, getDriverVehicleInfo } from '../services/bookingApi';
+import { eventEmitter } from '../utils/eventEmitter';
 
 const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
   if (!driverInfo) return null;
@@ -43,16 +44,27 @@ export default function MyBookingsScreen({ navigation }) {
     loadData();
   }, [activeTab]);
 
+  useEffect(() => {
+    const handleRefresh = (data) => {
+      const { keys } = data;
+      if (keys.includes('bookings_list') || keys.includes('history')) {
+        loadData(true);
+      }
+    };
+    eventEmitter.on('refreshData', handleRefresh);
+    return () => eventEmitter.off('refreshData', handleRefresh);
+  }, [activeTab]);
+
   const loadData = async (refresh = false) => {
     if (refresh) setRefreshing(true);
     else setLoading(true);
     try {
       if (activeTab === 'upcoming') {
-        const { items } = await getUpcomingBookings();
-        setUpcoming(items || []);
+        const response = await getUpcomingBookings();
+        setUpcoming(response.items || []);
       } else {
-        const { items } = await getPassengerHistory();
-        setHistory(items || []);
+        const response = await getPassengerHistory();
+        setHistory(response.items || []);
       }
     } catch (error) {
       Alert.alert('Error', error.message || 'Unable to load bookings');
@@ -75,11 +87,11 @@ export default function MyBookingsScreen({ navigation }) {
     }
   };
 
-  const renderBookingItem = ({ item }) => {
-    const pickupName = item.pickup_stop?.stop?.name || 'Pickup';
-    const dropoffName = item.dropoff_stop?.stop?.name || 'Dropoff';
+  const renderBookingItem = ({ item, index }) => {
+    const pickupName = item.pickup_stop?.stop?.name || item.pickup_stop?.name || 'Pickup';
+    const dropoffName = item.dropoff_stop?.stop?.name || item.dropoff_stop?.name || 'Dropoff';
     const status = item.booking_status || 'unknown';
-    const vehicleInfo = 'Shuttle'; // fallback
+
     let statusColor = 'bg-gray-800';
     let statusTextColor = 'text-gray-400';
     if (status === 'booked' || status === 'pending_payment') {
@@ -88,13 +100,14 @@ export default function MyBookingsScreen({ navigation }) {
     } else if (status === 'completed') {
       statusColor = 'bg-blue-900';
       statusTextColor = 'text-blue-400';
-    } else if (status === 'cancelled' || status === 'missed') {
+    } else if (status === 'cancelled' || status === 'canceled' || status === 'missed') {
       statusColor = 'bg-red-900';
       statusTextColor = 'text-red-400';
     }
 
     return (
       <TouchableOpacity
+        key={item.id || index}
         onPress={() => navigation.navigate('BookingDetail', { bookingId: item.id })}
         className="bg-gray-900 rounded-xl p-4 mb-3 mx-4 border border-gray-800"
       >
@@ -110,7 +123,7 @@ export default function MyBookingsScreen({ navigation }) {
         </View>
         <View className="flex-row items-center mb-1">
           <Ionicons name="bus-outline" size={14} color="#aaa" />
-          <Text className="text-gray-400 text-sm ml-2">{vehicleInfo}</Text>
+          <Text className="text-gray-400 text-sm ml-2">Shuttle</Text>
         </View>
         <View className="flex-row items-center mb-1">
           <Ionicons name="time-outline" size={14} color="#aaa" />
@@ -141,8 +154,6 @@ export default function MyBookingsScreen({ navigation }) {
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <Header title="My Bookings" />
-
-      {/* Tabs */}
       <View className="flex-row border-b border-gray-800">
         <TouchableOpacity
           onPress={() => setActiveTab('upcoming')}
@@ -176,7 +187,7 @@ export default function MyBookingsScreen({ navigation }) {
       ) : (
         <FlatList
           data={data}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => item.id || index.toString()}
           renderItem={renderBookingItem}
           contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
           refreshing={refreshing}
