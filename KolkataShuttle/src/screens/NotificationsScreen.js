@@ -22,6 +22,7 @@ export default function NotificationsScreen({ navigation }) {
     markAsRead,
     markAllRead,
     unreadCount,
+    wsConnected,
   } = useNotifications();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -77,9 +78,16 @@ export default function NotificationsScreen({ navigation }) {
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <Header title="Notifications" />
       <View className="flex-row justify-between items-center px-4 py-2 border-b border-gray-800">
-        <Text className="text-gray-400 text-sm">
-          {unreadCount} unread
-        </Text>
+        <View className="flex-row items-center">
+          <Text className="text-gray-400 text-sm mr-2">
+            {unreadCount} unread
+          </Text>
+          {wsConnected ? (
+            <Ionicons name="radio" size={12} color="#10b981" />
+          ) : (
+            <Ionicons name="radio-off" size={12} color="#ef4444" />
+          )}
+        </View>
         <TouchableOpacity onPress={handleMarkAllRead}>
           <Text className="text-green-500 text-sm font-semibold">Mark all as read</Text>
         </TouchableOpacity>

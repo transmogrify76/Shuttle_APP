@@ -26,10 +26,6 @@
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
       "package": "com.anonymous.KolkataShuttle"
@@ -61,6 +57,11 @@
           "locationAlwaysAndWhenInUsePermission": "Allow Kolkata Shuttle to use your location to show nearby buses and routes."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "0c9aa91b-139c-4cb4-b524-a39063518bb3"
+      }
+    }
   }
 }
