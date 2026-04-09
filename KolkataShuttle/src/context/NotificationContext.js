@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { AppState, Platform } from 'react-native';
+import { AppState } from 'react-native';
 import { useAuth } from './AuthContext';
 import { getUnreadCount, getNotifications, markNotificationRead, markAllNotificationsRead } from '../services/notificationApi';
 import { API_BASE_URL } from '../config/api';
@@ -20,7 +20,6 @@ export const NotificationProvider = ({ children }) => {
   const appState = useRef(AppState.currentState);
   const reconnectAttempts = useRef(0);
 
-  // Fetch unread count
   const fetchUnreadCount = async () => {
     if (!token) return;
     try {
@@ -31,7 +30,6 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
-  // Fetch notifications list
   const fetchNotifications = async (limit = 50, offset = 0, unreadOnly = false) => {
     if (!token) return [];
     try {
@@ -47,7 +45,6 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
-  // Mark single as read
   const markAsRead = async (notificationId) => {
     try {
       await markNotificationRead(notificationId);
@@ -60,10 +57,8 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
-  // Refresh list (pull to refresh)
   const refreshNotifications = () => fetchNotifications();
 
-  // WebSocket connection
   const connectWebSocket = () => {
     if (!token) {
       console.log('No token, skipping WebSocket connection');
@@ -71,6 +66,10 @@ export const NotificationProvider = ({ children }) => {
     }
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       console.log('WebSocket already open');
+      return;
+    }
+    if (wsRef.current?.readyState === WebSocket.CONNECTING) {
+      console.log('WebSocket already connecting');
       return;
     }
 
@@ -90,9 +89,12 @@ export const NotificationProvider = ({ children }) => {
         const data = JSON.parse(event.data);
         console.log('WebSocket message received:', data);
 
-        // Handle ping
+        // Handle ping – MUST send pong immediately
         if (data?.type === 'ping') {
-          ws.send(JSON.stringify({ type: 'pong' }));
+          console.log('Received ping, sending pong');
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'pong' }));
+          }
           return;
         }
 
@@ -102,13 +104,14 @@ export const NotificationProvider = ({ children }) => {
           return;
         }
 
-        // This is a live notification
+        // Live notification
         if (data?.id && data?.title) {
+          console.log('Received live notification:', data.title);
           // Add to local state (prepend)
           setNotifications(prev => [data, ...prev]);
           setUnreadCount(prev => prev + 1);
 
-          // Emit refresh event for other screens if needed
+          // Emit refresh event for other screens
           if (data.data?.refresh && Array.isArray(data.data.refresh)) {
             console.log('Emitting refreshData with keys:', data.data.refresh);
             eventEmitter.emit('refreshData', { keys: data.data.refresh });
@@ -153,11 +156,10 @@ export const NotificationProvider = ({ children }) => {
     setWsConnected(false);
   };
 
-  // Handle app state changes (foreground/background)
+  // App state changes
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        // App came to foreground – reconnect and refresh data
         console.log('App came to foreground, reconnecting WebSocket');
         disconnectWebSocket();
         connectWebSocket();

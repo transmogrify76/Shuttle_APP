@@ -66,9 +66,7 @@ export default function NotificationsScreen({ navigation }) {
               {new Date(item.created_at).toLocaleString()}
             </Text>
           </View>
-          {isUnread && (
-            <View className="w-2 h-2 rounded-full bg-green-500 mt-2" />
-          )}
+          {isUnread && <View className="w-2 h-2 rounded-full bg-green-500 mt-2" />}
         </View>
       </TouchableOpacity>
     );
@@ -79,14 +77,12 @@ export default function NotificationsScreen({ navigation }) {
       <Header title="Notifications" />
       <View className="flex-row justify-between items-center px-4 py-2 border-b border-gray-800">
         <View className="flex-row items-center">
-          <Text className="text-gray-400 text-sm mr-2">
-            {unreadCount} unread
-          </Text>
+          <Text className="text-gray-400 text-sm mr-2">{unreadCount} unread</Text>
           {wsConnected ? (
-            <Ionicons name="radio" size={12} color="#10b981" />
-          ) : (
-            <Ionicons name="radio-off" size={12} color="#ef4444" />
-          )}
+  <Ionicons name="wifi" size={12} color="#10b981" />
+) : (
+  <Ionicons name="wifi-outline" size={12} color="#ef4444" />
+)}
         </View>
         <TouchableOpacity onPress={handleMarkAllRead}>
           <Text className="text-green-500 text-sm font-semibold">Mark all as read</Text>
@@ -106,9 +102,7 @@ export default function NotificationsScreen({ navigation }) {
           data={notifications}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
           contentContainerStyle={{ paddingBottom: insets.bottom }}
         />
       )}

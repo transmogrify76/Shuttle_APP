@@ -1,4 +1,3 @@
-// Simple event emitter for React Native
 class EventEmitter {
   constructor() {
     this.events = {};
