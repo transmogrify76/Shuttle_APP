@@ -105,6 +105,9 @@ export default function MyBookingsScreen({ navigation }) {
       statusTextColor = 'text-red-400';
     }
 
+    // AC badge from route (if present in the response)
+    const hasAc = item.route?.has_ac;
+
     return (
       <TouchableOpacity
         key={item.id || index}
@@ -112,9 +115,16 @@ export default function MyBookingsScreen({ navigation }) {
         className="bg-gray-900 rounded-xl p-4 mb-3 mx-4 border border-gray-800"
       >
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-white font-bold text-base flex-1">
-            {pickupName} → {dropoffName}
-          </Text>
+          <View className="flex-row items-center flex-1">
+            <Text className="text-white font-bold text-base flex-1">
+              {pickupName} → {dropoffName}
+            </Text>
+            {hasAc && (
+              <View className="ml-2 px-2 py-0.5 rounded-full bg-green-100">
+                <Text className="text-green-700 text-xs font-bold">AC</Text>
+              </View>
+            )}
+          </View>
           <View className={`px-3 py-1 rounded-full ${statusColor}`}>
             <Text className={`text-xs font-bold ${statusTextColor}`}>
               {status.replace('_', ' ').toUpperCase()}

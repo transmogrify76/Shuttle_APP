@@ -2,11 +2,17 @@ import React from 'react';
 import { View, FlatList } from 'react-native';
 import Header from '../components/Header';
 import RouteCard from '../components/RouteCard';
-import { routes } from '../utils/dummyData';
+import { listRoutes } from '../services/routeApi'; // use real API
 
 export default function SelectRouteScreen({ navigation }) {
+  const [routes, setRoutes] = useState([]);
+  useEffect(() => {
+    // Fetch routes from API instead of dummy data
+    listRoutes(true).then(({ items }) => setRoutes(items)).catch(console.error);
+  }, []);
+
   const handleSelect = (route) => {
-    navigation.navigate('SeatSelection', { route, busType: route.busType === 'both' ? 'ac' : route.busType });
+    navigation.navigate('SeatSelection', { route, busType: route.has_ac ? 'ac' : 'nonAc' });
   };
 
   return (

@@ -31,7 +31,7 @@ const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 const BOTTOM_SHEET_MAX_HEIGHT = screenHeight * 0.7;
 const BOTTOM_SHEET_MIN_HEIGHT = screenHeight * 0.15;
 
-// ----- Stop Selector Modal Component (refined) -----
+// ----- Stop Selector Modal Component (unchanged) -----
 const StopSelector = ({ stops, selectedId, onSelect, label, icon }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const selectedStop = stops?.find(s => s.stop?.id === selectedId);
@@ -83,7 +83,7 @@ const StopSelector = ({ stops, selectedId, onSelect, label, icon }) => {
   );
 };
 
-// ----- Ride Card Component (modern, with gradient border on selected) -----
+// ----- Ride Card Component (unchanged, already shows AC from vehicle) -----
 const RideCard = ({ trip, selected, onPress, onViewStops, onInfoPress, seatInfo }) => {
   const scale = useRef(new Animated.Value(1)).current;
   const animateIn = () => Animated.spring(scale, { toValue: 0.98, useNativeDriver: true }).start();
@@ -225,7 +225,7 @@ const TripStopModal = ({ visible, onClose, stops }) => {
   );
 };
 
-// ----- Driver/Vehicle Info Modal (refined) -----
+// ----- Driver/Vehicle Info Modal (unchanged) -----
 const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
   if (!driverInfo) return null;
   return (
@@ -268,7 +268,7 @@ export default function HomeScreen({ navigation }) {
   const { user } = useAuth();
   const firstName = user?.email?.split('@')[0] || 'User';
 
-  // Data states (unchanged)
+  // Data states
   const [routesData, setRoutesData] = useState([]);
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [stops, setStops] = useState([]);
@@ -399,7 +399,7 @@ export default function HomeScreen({ navigation }) {
     fetchAllLegAvailability();
   }, [pickupStopId, dropoffStopId, trips, selectedRoute]);
 
-  // Fetch fare preview (unchanged)
+  // Fetch fare preview (unchanged, but now fare contains has_ac)
   useEffect(() => {
     if (selectedTrip && pickupStopId && dropoffStopId && selectedRoute) {
       (async () => {
@@ -495,7 +495,7 @@ export default function HomeScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Quick action: route selector */}
+          {/* Quick action: route selector (with AC badge) */}
           <View className="mb-4">
             <Text className="text-black font-semibold mb-2 text-sm uppercase tracking-wide">Select Route</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
@@ -503,13 +503,18 @@ export default function HomeScreen({ navigation }) {
                 <TouchableOpacity
                   key={route.id ? `${route.id}-${idx}` : `route-${idx}`}
                   onPress={() => setSelectedRoute(route)}
-                  className={`px-4 py-2 rounded-full mr-2 ${
+                  className={`px-4 py-2 rounded-full mr-2 flex-row items-center ${
                     selectedRoute?.id === route.id ? 'bg-black' : 'bg-gray-100'
                   }`}
                 >
                   <Text className={selectedRoute?.id === route.id ? 'text-white font-medium' : 'text-black'}>
                     {route.name}
                   </Text>
+                  {route.has_ac && (
+                    <View className="ml-2 px-1.5 py-0.5 rounded-full bg-green-100">
+                      <Text className="text-green-700 text-[10px] font-bold">AC</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -531,15 +536,22 @@ export default function HomeScreen({ navigation }) {
             icon="location-outline"
           />
 
-          {/* Fare preview card */}
+          {/* Fare preview card (with AC badge) */}
           {fare && (
             <View className="bg-gray-50 rounded-2xl p-4 mt-2 flex-row justify-between items-center">
               <View>
                 <Text className="text-black font-bold text-lg">₹{fare.amount}</Text>
                 <Text className="text-gray-500 text-xs">Estimated fare</Text>
               </View>
-              <View className="bg-white px-3 py-1 rounded-full shadow-sm">
-                <Text className="text-black text-xs">{fare.route_name}</Text>
+              <View className="flex-row items-center">
+                {fare.has_ac && (
+                  <View className="mr-2 px-2 py-0.5 rounded-full bg-green-100">
+                    <Text className="text-green-700 text-xs font-bold">AC</Text>
+                  </View>
+                )}
+                <View className="bg-white px-3 py-1 rounded-full shadow-sm">
+                  <Text className="text-black text-xs">{fare.route_name}</Text>
+                </View>
               </View>
             </View>
           )}

@@ -166,7 +166,14 @@ export default function SeatSelectionScreen({ route, navigation }) {
       <Header title="Select Seats" />
       <ScrollView>
         <View className="p-5 border-b border-gray-800">
-          <Text className="text-white text-xl font-bold">{routeName}</Text>
+          <View className="flex-row items-center justify-between">
+            <Text className="text-white text-xl font-bold">{routeName}</Text>
+            {scheduledTrip.route?.has_ac && (
+              <View className="px-2 py-1 rounded-full bg-green-100">
+                <Text className="text-green-700 text-xs font-bold">AC</Text>
+              </View>
+            )}
+          </View>
           <Text className="text-green-500 text-base mt-1">Scheduled Trip</Text>
           <Text className="text-gray-400 text-sm mt-1">
             {new Date(scheduledTrip.planned_start_at).toLocaleString()}

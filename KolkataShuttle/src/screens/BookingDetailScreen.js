@@ -209,20 +209,27 @@ export default function BookingDetailScreen({ route, navigation }) {
         )}
 
         {/* Trip Info */}
-        <View className="bg-gray-900 rounded-2xl p-4 mb-4">
-          <Text className="text-white text-lg font-bold mb-2">Trip Details</Text>
-          <View className="flex-row items-center mb-2">
-            <Ionicons name="time" size={20} color="#aaa" />
-            <Text className="text-gray-300 ml-2">Trip starts: {tripStartTime}</Text>
-          </View>
-          <View className="flex-row items-center">
-            <Ionicons name="navigate" size={20} color="#aaa" />
-            <Text className="text-gray-300 ml-2">
-              {trip?.trip_from_stop?.name || 'Start'} → {trip?.trip_to_stop?.name || 'End'}
-            </Text>
-          </View>
-        </View>
-
+        {/* Trip Info */}
+<View className="bg-gray-900 rounded-2xl p-4 mb-4">
+  <View className="flex-row justify-between items-center mb-2">
+    <Text className="text-white text-lg font-bold">Trip Details</Text>
+    {trip?.route?.has_ac && (
+      <View className="px-2 py-0.5 rounded-full bg-green-100">
+        <Text className="text-green-700 text-xs font-bold">AC</Text>
+      </View>
+    )}
+  </View>
+  <View className="flex-row items-center mb-2">
+    <Ionicons name="time" size={20} color="#aaa" />
+    <Text className="text-gray-300 ml-2">Trip starts: {tripStartTime}</Text>
+  </View>
+  <View className="flex-row items-center">
+    <Ionicons name="navigate" size={20} color="#aaa" />
+    <Text className="text-gray-300 ml-2">
+      {trip?.trip_from_stop?.name || 'Start'} → {trip?.trip_to_stop?.name || 'End'}
+    </Text>
+  </View>
+</View>
         {/* Your Journey */}
         <View className="bg-gray-900 rounded-2xl p-4 mb-4">
           <Text className="text-white text-lg font-bold mb-2">Your Journey</Text>
