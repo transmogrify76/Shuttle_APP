@@ -28,8 +28,8 @@ import {
 export default function BookingDetailScreen({ route, navigation }) {
   const { bookingId } = route.params;
   const insets = useSafeAreaInsets();
-  const [status, setStatus] = useState(null); // live status
-  const [booking, setBooking] = useState(null); // fallback
+  const [status, setStatus] = useState(null);
+  const [booking, setBooking] = useState(null);
   const [qrData, setQrData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
@@ -48,7 +48,6 @@ export default function BookingDetailScreen({ route, navigation }) {
   const loadData = async () => {
     try {
       setLoading(true);
-      // Try live status first
       try {
         const live = await getBookingCurrentStatus(bookingId);
         setStatus(live);
@@ -57,7 +56,6 @@ export default function BookingDetailScreen({ route, navigation }) {
           setDriverVehicleInfo(info);
         }
       } catch (e) {
-        // Fallback to booking detail
         const bookingData = await getBookingDetail(bookingId);
         setBooking(bookingData);
         if (bookingData.scheduled_trip_id) {
@@ -65,14 +63,10 @@ export default function BookingDetailScreen({ route, navigation }) {
           setDriverVehicleInfo(info);
         }
       }
-
-      // Fetch QR (optional)
       try {
         const qr = await getBookingQR(bookingId);
         setQrData(qr);
       } catch (e) {}
-
-      // Fetch rating
       try {
         const rating = await getBookingRating(bookingId);
         setExistingRating(rating);
@@ -141,16 +135,25 @@ export default function BookingDetailScreen({ route, navigation }) {
     );
   }
 
-  // Use live status if available, else fallback to booking detail
   const displayData = status || booking;
   const trip = displayData?.scheduled_trip || displayData;
   const canCancel = displayData?.booking_status === 'booked' || displayData?.booking_status === 'pending_payment';
   const canRate = displayData?.booking_status === 'completed' && !existingRating;
-  const liveProgress = status; // only if we have the live endpoint data
+  const liveProgress = status;
 
   const pickupStopName = displayData?.pickup_stop?.stop?.name || displayData?.pickup_stop?.name || 'Pickup';
   const dropoffStopName = displayData?.dropoff_stop?.stop?.name || displayData?.dropoff_stop?.name || 'Dropoff';
   const tripStartTime = trip?.planned_start_at ? new Date(trip.planned_start_at).toLocaleString() : 'Not scheduled';
+
+  // Safe rating display - convert to number and handle null/undefined
+  const ratingValue = driverVehicleInfo?.driver_average_rating;
+  const ratingNum = ratingValue !== null && ratingValue !== undefined ? Number(ratingValue) : null;
+  const hasRating = ratingNum !== null && !isNaN(ratingNum);
+  const ratingCount = driverVehicleInfo?.driver_rating_count || 0;
+
+  // Safe conversion for existing rating
+  const existingTripRating = existingRating?.trip_rating ? Number(existingRating.trip_rating) : 0;
+  const existingDriverRating = existingRating?.driver_rating ? Number(existingRating.driver_rating) : 0;
 
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
@@ -188,7 +191,9 @@ export default function BookingDetailScreen({ route, navigation }) {
             <View className="flex-row items-center mb-2">
               <Ionicons name="star" size={16} color="#fbbf24" />
               <Text className="text-gray-300 ml-1">
-                {driverVehicleInfo.driver_average_rating?.toFixed(1)} ({driverVehicleInfo.driver_rating_count} ratings)
+                {hasRating 
+                  ? `${ratingNum.toFixed(1)} (${ratingCount} ratings)`
+                  : `New (${ratingCount} ratings)`}
               </Text>
             </View>
             <View className="flex-row items-center mb-1">
@@ -208,33 +213,33 @@ export default function BookingDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Trip Info */}
-        {/* Trip Info */}
-<View className="bg-gray-900 rounded-2xl p-4 mb-4">
-  <View className="flex-row justify-between items-center mb-2">
-    <Text className="text-white text-lg font-bold">Trip Details</Text>
-    {trip?.route?.has_ac && (
-      <View className="px-2 py-0.5 rounded-full bg-green-100">
-        <Text className="text-green-700 text-xs font-bold">AC</Text>
-      </View>
-    )}
-  </View>
-  <View className="flex-row items-center mb-2">
-    <Ionicons name="time" size={20} color="#aaa" />
-    <Text className="text-gray-300 ml-2">Trip starts: {tripStartTime}</Text>
-  </View>
-  <View className="flex-row items-center">
-    <Ionicons name="navigate" size={20} color="#aaa" />
-    <Text className="text-gray-300 ml-2">
-      {trip?.trip_from_stop?.name || 'Start'} → {trip?.trip_to_stop?.name || 'End'}
-    </Text>
-  </View>
-</View>
+        {/* Trip Info with AC badge */}
+        <View className="bg-gray-900 rounded-2xl p-4 mb-4">
+          <View className="flex-row justify-between items-center mb-2">
+            <Text className="text-white text-lg font-bold">Trip Details</Text>
+            {trip?.route?.has_ac && (
+              <View className="px-2 py-0.5 rounded-full bg-gray-800">
+                <Text className="text-white text-xs font-bold">AC</Text>
+              </View>
+            )}
+          </View>
+          <View className="flex-row items-center mb-2">
+            <Ionicons name="time" size={20} color="#aaa" />
+            <Text className="text-gray-300 ml-2">Trip starts: {tripStartTime}</Text>
+          </View>
+          <View className="flex-row items-center">
+            <Ionicons name="navigate" size={20} color="#aaa" />
+            <Text className="text-gray-300 ml-2">
+              {trip?.trip_from_stop?.name || 'Start'} → {trip?.trip_to_stop?.name || 'End'}
+            </Text>
+          </View>
+        </View>
+
         {/* Your Journey */}
         <View className="bg-gray-900 rounded-2xl p-4 mb-4">
           <Text className="text-white text-lg font-bold mb-2">Your Journey</Text>
           <View className="flex-row items-center mb-3">
-            <View className="w-6 h-6 rounded-full bg-green-700 items-center justify-center mr-3">
+            <View className="w-6 h-6 rounded-full bg-gray-800 items-center justify-center mr-3">
               <Ionicons name="log-in-outline" size={14} color="#fff" />
             </View>
             <View className="flex-1">
@@ -242,7 +247,7 @@ export default function BookingDetailScreen({ route, navigation }) {
             </View>
           </View>
           <View className="flex-row items-center">
-            <View className="w-6 h-6 rounded-full bg-red-700 items-center justify-center mr-3">
+            <View className="w-6 h-6 rounded-full bg-gray-800 items-center justify-center mr-3">
               <Ionicons name="log-out-outline" size={14} color="#fff" />
             </View>
             <View className="flex-1">
@@ -251,7 +256,7 @@ export default function BookingDetailScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* Live Progress (if available from the new API) */}
+        {/* Live Progress */}
         {liveProgress && (
           <View className="bg-gray-900 rounded-2xl p-4 mb-4">
             <Text className="text-white text-lg font-bold mb-2">Live Trip Status</Text>
@@ -281,7 +286,6 @@ export default function BookingDetailScreen({ route, navigation }) {
               </View>
             )}
 
-            {/* Segment stops list (only the passenger's segment) */}
             {liveProgress.segment_stops && liveProgress.segment_stops.length > 0 && (
               <View>
                 <Text className="text-white text-sm font-semibold mb-2">Your segment stops</Text>
@@ -362,13 +366,13 @@ export default function BookingDetailScreen({ route, navigation }) {
             <Text className="text-white text-lg font-bold mb-2">Your Rating</Text>
             <View className="flex-row items-center mb-2">
               {[...Array(5)].map((_, i) => (
-                <Ionicons key={i} name={i < existingRating.trip_rating ? 'star' : 'star-outline'} size={20} color="#fbbf24" />
+                <Ionicons key={i} name={i < existingTripRating ? 'star' : 'star-outline'} size={20} color="#fbbf24" />
               ))}
               <Text className="text-white ml-2">Trip</Text>
             </View>
             <View className="flex-row items-center mb-2">
               {[...Array(5)].map((_, i) => (
-                <Ionicons key={i} name={i < existingRating.driver_rating ? 'star' : 'star-outline'} size={20} color="#fbbf24" />
+                <Ionicons key={i} name={i < existingDriverRating ? 'star' : 'star-outline'} size={20} color="#fbbf24" />
               ))}
               <Text className="text-white ml-2">Driver</Text>
             </View>

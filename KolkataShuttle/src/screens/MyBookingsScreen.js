@@ -8,21 +8,38 @@ import { eventEmitter } from '../utils/eventEmitter';
 
 const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
   if (!driverInfo) return null;
+  const rating = driverInfo.driver_average_rating;
+  const hasRating = rating != null && !isNaN(rating);
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <View className="flex-1 bg-black/50 justify-center items-center p-5">
-        <View className="bg-white rounded-2xl p-5 w-full">
-          <Text className="text-xl font-bold mb-4">Driver & Vehicle</Text>
-          <Text className="font-bold">Driver: {driverInfo.driver_name || 'N/A'}</Text>
-          <Text className="text-gray-600 mt-1">
-            Rating: {driverInfo.driver_average_rating?.toFixed(1)} ({driverInfo.driver_rating_count} reviews)
-          </Text>
-          <Text className="font-bold mt-3">Vehicle</Text>
-          <Text>{driverInfo.vehicle_name || 'Bus'}</Text>
-          <Text className="text-gray-600">{driverInfo.vehicle_model} ({driverInfo.vehicle_color})</Text>
-          <Text className="text-gray-600">Reg: {driverInfo.vehicle_registration_number || 'N/A'}</Text>
-          <TouchableOpacity onPress={onClose} className="mt-4 py-2 bg-black rounded-full">
-            <Text className="text-white text-center">Close</Text>
+      <View className="flex-1 bg-black/90 justify-center items-center p-5">
+        <View className="bg-black rounded-3xl p-6 w-full border border-gray-800">
+          <Text className="text-2xl font-bold text-white mb-4">Driver & Vehicle</Text>
+          <View className="flex-row items-center mb-4">
+            <View className="w-12 h-12 rounded-full bg-gray-800 items-center justify-center mr-3">
+              <Ionicons name="person" size={24} color="#fff" />
+            </View>
+            <View>
+              <Text className="text-white font-semibold">{driverInfo.driver_name || 'N/A'}</Text>
+              <View className="flex-row items-center">
+                <Ionicons name="star" size={14} color="#fbbf24" />
+                <Text className="text-gray-400 text-xs ml-1">
+                  {hasRating 
+                    ? `${rating.toFixed(1)} (${driverInfo.driver_rating_count} ratings)`
+                    : `New (${driverInfo.driver_rating_count} ratings)`}
+                </Text>
+              </View>
+            </View>
+          </View>
+          <View className="bg-gray-900 rounded-xl p-3 mb-4">
+            <Text className="text-white font-semibold mb-1">Vehicle</Text>
+            <Text className="text-gray-300">{driverInfo.vehicle_name || 'Bus'}</Text>
+            <Text className="text-gray-400 text-sm">{driverInfo.vehicle_model} ({driverInfo.vehicle_color})</Text>
+            <Text className="text-gray-400 text-sm">Reg: {driverInfo.vehicle_registration_number || 'N/A'}</Text>
+            <Text className="text-gray-400 text-sm">Total seats: {driverInfo.vehicle_total_seat || '?'}</Text>
+          </View>
+          <TouchableOpacity onPress={onClose} className="bg-white py-3 rounded-full">
+            <Text className="text-black text-center font-semibold">Close</Text>
           </TouchableOpacity>
         </View>
       </View>
