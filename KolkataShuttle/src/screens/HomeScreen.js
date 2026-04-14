@@ -228,8 +228,10 @@ const TripStopModal = ({ visible, onClose, stops }) => {
 // ----- Driver/Vehicle Info Modal (unchanged) -----
 const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
   if (!driverInfo) return null;
-  const rating = driverInfo.driver_average_rating;
-  const hasRating = rating != null && !isNaN(rating);
+  let rating = driverInfo.driver_average_rating;
+  const ratingNum = rating != null && !isNaN(parseFloat(rating)) ? parseFloat(rating) : null;
+  const hasRating = ratingNum !== null;
+  const ratingCount = driverInfo.driver_rating_count || 0;
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View className="flex-1 bg-black/90 justify-center items-center p-5">
@@ -245,8 +247,8 @@ const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
                 <Ionicons name="star" size={14} color="#fbbf24" />
                 <Text className="text-gray-400 text-xs ml-1">
                   {hasRating 
-                    ? `${rating.toFixed(1)} (${driverInfo.driver_rating_count} ratings)`
-                    : `New (${driverInfo.driver_rating_count} ratings)`}
+                    ? `${ratingNum.toFixed(1)} (${ratingCount} ratings)`
+                    : `New (${ratingCount} ratings)`}
                 </Text>
               </View>
             </View>
@@ -266,7 +268,6 @@ const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
     </Modal>
   );
 };
-
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -488,7 +489,7 @@ export default function HomeScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
         >
-          {/* Greeting with user avatar */}
+
           <View className="flex-row justify-between items-center mb-6">
             <View>
               <Text className="text-gray-500 text-sm">Welcome back,</Text>
@@ -499,7 +500,6 @@ export default function HomeScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Quick action: route selector (with AC badge) */}
           <View className="mb-4">
             <Text className="text-black font-semibold mb-2 text-sm uppercase tracking-wide">Select Route</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
@@ -524,7 +524,6 @@ export default function HomeScreen({ navigation }) {
             </ScrollView>
           </View>
 
-          {/* Pickup and dropoff with icons */}
           <StopSelector
             stops={stops}
             selectedId={pickupStopId}
@@ -540,7 +539,6 @@ export default function HomeScreen({ navigation }) {
             icon="location-outline"
           />
 
-          {/* Fare preview card (with AC badge) */}
           {fare && (
             <View className="bg-gray-50 rounded-2xl p-4 mt-2 flex-row justify-between items-center">
               <View>
@@ -560,7 +558,6 @@ export default function HomeScreen({ navigation }) {
             </View>
           )}
 
-          {/* Available rides */}
           <Text className="text-black text-lg font-semibold mt-6 mb-3">Available Buses</Text>
           {loading && trips.length === 0 ? (
             <ActivityIndicator size="large" color="#000" />
@@ -587,7 +584,6 @@ export default function HomeScreen({ navigation }) {
           )}
           {loadingSeats && <ActivityIndicator size="small" color="#000" className="mt-2" />}
 
-          {/* Confirm button */}
           <AnimatedButton
             title={`Select Seats & Pay ₹${fare?.amount || '0'}`}
             onPress={handleConfirm}

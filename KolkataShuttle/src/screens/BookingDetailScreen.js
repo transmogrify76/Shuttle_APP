@@ -146,11 +146,10 @@ export default function BookingDetailScreen({ route, navigation }) {
   const tripStartTime = trip?.planned_start_at ? new Date(trip.planned_start_at).toLocaleString() : 'Not scheduled';
 
   // Safe rating display - convert to number and handle null/undefined
-  const ratingValue = driverVehicleInfo?.driver_average_rating;
-  const ratingNum = ratingValue !== null && ratingValue !== undefined ? Number(ratingValue) : null;
-  const hasRating = ratingNum !== null && !isNaN(ratingNum);
-  const ratingCount = driverVehicleInfo?.driver_rating_count || 0;
-
+ const ratingValue = driverVehicleInfo?.driver_average_rating;
+const ratingNum = ratingValue != null && !isNaN(parseFloat(ratingValue)) ? parseFloat(ratingValue) : null;
+const hasRating = ratingNum !== null;
+const ratingCount = driverVehicleInfo?.driver_rating_count || 0;
   // Safe conversion for existing rating
   const existingTripRating = existingRating?.trip_rating ? Number(existingRating.trip_rating) : 0;
   const existingDriverRating = existingRating?.driver_rating ? Number(existingRating.driver_rating) : 0;
@@ -189,13 +188,13 @@ export default function BookingDetailScreen({ route, navigation }) {
               <Text className="text-gray-300 ml-2">Driver: {driverVehicleInfo.driver_name || 'N/A'}</Text>
             </View>
             <View className="flex-row items-center mb-2">
-              <Ionicons name="star" size={16} color="#fbbf24" />
-              <Text className="text-gray-300 ml-1">
-                {hasRating 
-                  ? `${ratingNum.toFixed(1)} (${ratingCount} ratings)`
-                  : `New (${ratingCount} ratings)`}
-              </Text>
-            </View>
+  <Ionicons name="star" size={16} color="#fbbf24" />
+  <Text className="text-gray-300 ml-1">
+    {hasRating 
+      ? `${ratingNum.toFixed(1)} (${ratingCount} ratings)`
+      : `New (${ratingCount} ratings)`}
+  </Text>
+</View>
             <View className="flex-row items-center mb-1">
               <Ionicons name="car-outline" size={20} color="#aaa" />
               <Text className="text-gray-300 ml-2">

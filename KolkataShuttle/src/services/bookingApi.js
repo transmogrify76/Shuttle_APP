@@ -139,11 +139,15 @@ export const getLegAvailableSeats = async (tripId, routeId, pickupStopId, dropof
 // Driver + vehicle info (new API)
 export const getDriverVehicleInfo = async (tripId) => {
   const headers = await getAuthHeaders();
-  const url = `${API_BASE_URL}/passenger/scheduled-trips/${tripId}/driver-vehicle-info`;
-  const response = await fetch(url, { headers });
-  return handleResponse(response, url);
+  const response = await fetch(`${API_BASE_URL}/passenger/scheduled-trips/${tripId}/driver-vehicle-info`, { headers });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail?.message || 'Failed to fetch driver info');
+  // Sanitize rating
+  if (data.driver_average_rating !== undefined && data.driver_average_rating !== null) {
+    data.driver_average_rating = parseFloat(data.driver_average_rating);
+  }
+  return data;
 };
-
 export const getBookingCurrentStatus = async (bookingId) => {
   const headers = await getAuthHeaders();
   const response = await fetch(`${API_BASE_URL}/passenger/bookings/${bookingId}/current-status`, { headers });
