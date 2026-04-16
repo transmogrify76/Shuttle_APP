@@ -98,26 +98,29 @@ export default function SeatSelectionScreen({ route, navigation }) {
     }
   };
 
-  const handlePaymentSuccess = async (paymentData) => {
-    try {
-      await verifyBookingPayment(currentBooking.id, {
-        razorpay_order_id: currentPaymentOrder.razorpay_order_id,
-        razorpay_payment_id: paymentData.razorpay_payment_id,
-        razorpay_signature: paymentData.razorpay_signature,
-      });
-      Alert.alert('Success', `Booking confirmed for ${seatCount} seat(s)!`);
-      setPaymentModalVisible(false);
-      navigation.navigate('BookingConfirmation', {
-        route: { name: routeName, time: scheduledTrip.planned_start_at },
-        busType: 'AC',
-        seats: Array(seatCount).fill('Any'),
-        fare: totalFare,
-      });
-    } catch (error) {
-      Alert.alert('Error', error.message || 'Payment verification failed');
-      setPaymentModalVisible(false);
-    }
-  };
+ const handlePaymentSuccess = async (paymentData) => {
+  try {
+    const result = await verifyBookingPayment(currentBooking.id, {
+      razorpay_order_id: currentPaymentOrder.razorpay_order_id,
+      razorpay_payment_id: paymentData.razorpay_payment_id,
+      razorpay_signature: paymentData.razorpay_signature,
+    });
+    // result.booking contains the OTP
+    const otp = result.booking.otp;
+    Alert.alert('Success', `Booking confirmed for ${seatCount} seat(s)!`);
+    setPaymentModalVisible(false);
+    navigation.navigate('BookingConfirmation', {
+      route: { name: routeName, time: scheduledTrip.planned_start_at },
+      busType: 'AC',
+      seats: Array(seatCount).fill('Any'),
+      fare: totalFare,
+      otp: otp,  // <-- add OTP
+    });
+  } catch (error) {
+    Alert.alert('Error', error.message || 'Payment verification failed');
+    setPaymentModalVisible(false);
+  }
+};
 
   const handlePaymentError = (errorMsg) => {
     Alert.alert('Payment Error', errorMsg || 'Payment failed');

@@ -8,8 +8,10 @@ import { eventEmitter } from '../utils/eventEmitter';
 
 const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
   if (!driverInfo) return null;
-  const rating = driverInfo.driver_average_rating;
-  const hasRating = rating != null && !isNaN(rating);
+  let rating = driverInfo.driver_average_rating;
+  const ratingNum = rating != null && !isNaN(parseFloat(rating)) ? parseFloat(rating) : null;
+  const hasRating = ratingNum !== null;
+  const ratingCount = driverInfo.driver_rating_count || 0;
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View className="flex-1 bg-black/90 justify-center items-center p-5">
@@ -25,8 +27,8 @@ const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
                 <Ionicons name="star" size={14} color="#fbbf24" />
                 <Text className="text-gray-400 text-xs ml-1">
                   {hasRating 
-                    ? `${rating.toFixed(1)} (${driverInfo.driver_rating_count} ratings)`
-                    : `New (${driverInfo.driver_rating_count} ratings)`}
+                    ? `${ratingNum.toFixed(1)} (${ratingCount} ratings)`
+                    : `New (${ratingCount} ratings)`}
                 </Text>
               </View>
             </View>
@@ -122,8 +124,8 @@ export default function MyBookingsScreen({ navigation }) {
       statusTextColor = 'text-red-400';
     }
 
-    // AC badge from route (if present in the response)
     const hasAc = item.route?.has_ac;
+    const otp = item.otp; // OTP for the booking (present for active bookings)
 
     return (
       <TouchableOpacity
@@ -162,6 +164,12 @@ export default function MyBookingsScreen({ navigation }) {
           <Ionicons name="cash-outline" size={14} color="#aaa" />
           <Text className="text-gray-400 text-sm ml-2">₹{item.fare_amount}</Text>
         </View>
+        {otp && (
+          <View className="flex-row items-center mt-1">
+            <Ionicons name="key-outline" size={14} color="#aaa" />
+            <Text className="text-gray-400 text-xs ml-2">OTP: {otp}</Text>
+          </View>
+        )}
         {item.scheduled_trip_id && (
           <TouchableOpacity
             onPress={() => showDriverInfo(item.scheduled_trip_id)}

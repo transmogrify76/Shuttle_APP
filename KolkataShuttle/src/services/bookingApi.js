@@ -147,7 +147,7 @@ export const getDriverVehicleInfo = async (tripId) => {
     data.driver_average_rating = parseFloat(data.driver_average_rating);
   }
   return data;
-};
+};0
 export const getBookingCurrentStatus = async (bookingId) => {
   const headers = await getAuthHeaders();
   const response = await fetch(`${API_BASE_URL}/passenger/bookings/${bookingId}/current-status`, { headers });
