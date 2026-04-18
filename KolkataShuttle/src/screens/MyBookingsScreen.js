@@ -3,7 +3,13 @@ import { View, Text, FlatList, ActivityIndicator, Alert, TouchableOpacity, Modal
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/Header';
-import { getUpcomingBookings, getPassengerHistory, getDriverVehicleInfo } from '../services/bookingApi';
+import {
+  getUpcomingBookings,
+  getPassengerHistory,
+  getCurrentBookings,
+  getDriverVehicleInfo,
+  getBookingCurrentStatus,
+} from '../services/bookingApi';
 import { eventEmitter } from '../utils/eventEmitter';
 
 const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
@@ -53,7 +59,9 @@ export default function MyBookingsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('upcoming');
   const [upcoming, setUpcoming] = useState([]);
+  const [ongoing, setOngoing] = useState([]);
   const [history, setHistory] = useState([]);
+  const [ongoingStatus, setOngoingStatus] = useState({});
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [driverModalVisible, setDriverModalVisible] = useState(false);
@@ -66,9 +74,8 @@ export default function MyBookingsScreen({ navigation }) {
   useEffect(() => {
     const handleRefresh = (data) => {
       const { keys } = data;
-      if (keys.includes('bookings_list') || keys.includes('history')) {
-        loadData(true);
-      }
+      if (keys.includes('bookings_list') || keys.includes('history')) loadData(true);
+      if (keys.includes('current_booking') && activeTab === 'ongoing') loadData(true);
     };
     eventEmitter.on('refreshData', handleRefresh);
     return () => eventEmitter.off('refreshData', handleRefresh);
@@ -81,6 +88,23 @@ export default function MyBookingsScreen({ navigation }) {
       if (activeTab === 'upcoming') {
         const response = await getUpcomingBookings();
         setUpcoming(response.items || []);
+      } else if (activeTab === 'ongoing') {
+        // 1. Get current bookings list
+        const response = await getCurrentBookings();
+        const items = response.items || [];
+        setOngoing(items);
+
+        // 2. For each, fetch live current-status
+        const statusMap = {};
+        for (const booking of items) {
+          try {
+            const status = await getBookingCurrentStatus(booking.id);
+            statusMap[booking.id] = status;
+          } catch (err) {
+            console.error(`Failed to fetch status for ${booking.id}`, err);
+          }
+        }
+        setOngoingStatus(statusMap);
       } else {
         const response = await getPassengerHistory();
         setHistory(response.items || []);
@@ -110,6 +134,8 @@ export default function MyBookingsScreen({ navigation }) {
     const pickupName = item.pickup_stop?.stop?.name || item.pickup_stop?.name || 'Pickup';
     const dropoffName = item.dropoff_stop?.stop?.name || item.dropoff_stop?.name || 'Dropoff';
     const status = item.booking_status || 'unknown';
+    const isOngoing = activeTab === 'ongoing';
+    const liveStatus = isOngoing ? ongoingStatus[item.id] : null;
 
     let statusColor = 'bg-gray-800';
     let statusTextColor = 'text-gray-400';
@@ -125,7 +151,7 @@ export default function MyBookingsScreen({ navigation }) {
     }
 
     const hasAc = item.route?.has_ac;
-    const otp = item.otp; // OTP for the booking (present for active bookings)
+    const otp = item.otp;
 
     return (
       <TouchableOpacity
@@ -170,6 +196,26 @@ export default function MyBookingsScreen({ navigation }) {
             <Text className="text-gray-400 text-xs ml-2">OTP: {otp}</Text>
           </View>
         )}
+        {isOngoing && liveStatus && (
+          <View className="mt-2 pt-2 border-t border-gray-800">
+            <Text className="text-gray-400 text-xs">
+              {liveStatus.trip_status === 'in_progress' ? '🚌 Trip in progress' : liveStatus.trip_status}
+            </Text>
+            {liveStatus.current_progress_stop && (
+              <Text className="text-gray-400 text-xs mt-1">
+                Current stop: {liveStatus.current_progress_stop.stop?.name}
+              </Text>
+            )}
+            <View className="flex-row justify-between mt-1">
+              <Text className="text-gray-500 text-xs">
+                Boarding: {liveStatus.boarding_scan_completed ? '✅' : '⏳'}
+              </Text>
+              <Text className="text-gray-500 text-xs">
+                Drop: {liveStatus.drop_scan_completed ? '✅' : '⏳'}
+              </Text>
+            </View>
+          </View>
+        )}
         {item.scheduled_trip_id && (
           <TouchableOpacity
             onPress={() => showDriverInfo(item.scheduled_trip_id)}
@@ -183,7 +229,13 @@ export default function MyBookingsScreen({ navigation }) {
     );
   };
 
-  const data = activeTab === 'upcoming' ? upcoming : history;
+  const getDataForTab = () => {
+    if (activeTab === 'upcoming') return upcoming;
+    if (activeTab === 'ongoing') return ongoing;
+    return history;
+  };
+
+  const data = getDataForTab();
   const isEmpty = (!loading && data.length === 0);
 
   return (
@@ -196,6 +248,14 @@ export default function MyBookingsScreen({ navigation }) {
         >
           <Text className={`text-center ${activeTab === 'upcoming' ? 'text-white font-bold' : 'text-gray-500'}`}>
             Upcoming
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setActiveTab('ongoing')}
+          className={`flex-1 py-3 ${activeTab === 'ongoing' ? 'border-b-2 border-white' : ''}`}
+        >
+          <Text className={`text-center ${activeTab === 'ongoing' ? 'text-white font-bold' : 'text-gray-500'}`}>
+            Ongoing
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -216,7 +276,7 @@ export default function MyBookingsScreen({ navigation }) {
         <View className="flex-1 justify-center items-center">
           <Ionicons name="calendar-outline" size={60} color="#444" />
           <Text className="text-gray-500 text-base mt-3">
-            No {activeTab === 'upcoming' ? 'upcoming' : 'past'} bookings
+            No {activeTab === 'upcoming' ? 'upcoming' : activeTab === 'ongoing' ? 'ongoing' : 'past'} bookings
           </Text>
         </View>
       ) : (

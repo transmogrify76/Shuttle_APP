@@ -20,7 +20,7 @@ const handleResponse = async (response, url) => {
     return data;
   } catch (e) {
     console.error(`[API] JSON parse error for ${url}. Full response:`, text);
-    throw new Error(`Server returned invalid JSON (status ${response.status}). Response starts with: "${text.substring(0, 50)}". This may be an HTML error page. Check your backend.`);
+    throw new Error(`Server returned invalid JSON (status ${response.status}). Response starts with: "${text.substring(0, 50)}".`);
   }
 };
 
@@ -64,6 +64,14 @@ export const verifyBookingPayment = async (bookingId, { razorpay_order_id, razor
 export const getUpcomingBookings = async () => {
   const headers = await getAuthHeaders();
   const url = `${API_BASE_URL}/passenger/bookings/upcoming`;
+  const response = await fetch(url, { headers });
+  return handleResponse(response, url);
+};
+
+// Current bookings (ongoing)
+export const getCurrentBookings = async () => {
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE_URL}/passenger/bookings/current`;
   const response = await fetch(url, { headers });
   return handleResponse(response, url);
 };
@@ -112,15 +120,18 @@ export const createRating = async (bookingId, { trip_rating, driver_rating, revi
   return handleResponse(response, url);
 };
 
-// Get booking rating
+// Get booking rating (returns null if not found)
 export const getBookingRating = async (bookingId) => {
   const headers = await getAuthHeaders();
   const url = `${API_BASE_URL}/passenger/bookings/${bookingId}/rating`;
   const response = await fetch(url, { headers });
+  if (response.status === 404) {
+    return null;
+  }
   return handleResponse(response, url);
 };
 
-// Leg available seats (new API)
+// Leg available seats
 export const getLegAvailableSeats = async (tripId, routeId, pickupStopId, dropoffStopId) => {
   const headers = await getAuthHeaders();
   const url = `${API_BASE_URL}/passenger/scheduled-trips/${tripId}/available-seats`;
@@ -136,18 +147,19 @@ export const getLegAvailableSeats = async (tripId, routeId, pickupStopId, dropof
   return handleResponse(response, url);
 };
 
-// Driver + vehicle info (new API)
+// Driver + vehicle info
 export const getDriverVehicleInfo = async (tripId) => {
   const headers = await getAuthHeaders();
   const response = await fetch(`${API_BASE_URL}/passenger/scheduled-trips/${tripId}/driver-vehicle-info`, { headers });
   const data = await response.json();
   if (!response.ok) throw new Error(data.detail?.message || 'Failed to fetch driver info');
-  // Sanitize rating
   if (data.driver_average_rating !== undefined && data.driver_average_rating !== null) {
     data.driver_average_rating = parseFloat(data.driver_average_rating);
   }
   return data;
-};0
+};
+
+// Booking current status (live progress)
 export const getBookingCurrentStatus = async (bookingId) => {
   const headers = await getAuthHeaders();
   const response = await fetch(`${API_BASE_URL}/passenger/bookings/${bookingId}/current-status`, { headers });
