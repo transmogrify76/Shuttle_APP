@@ -48,9 +48,11 @@ export default function BookingDetailScreen({ route, navigation }) {
   const loadData = async () => {
     try {
       setLoading(true);
+      let bookingStatus = null;
       try {
         const live = await getBookingCurrentStatus(bookingId);
         setStatus(live);
+        bookingStatus = live.booking_status;
         if (live.scheduled_trip_id) {
           const info = await getDriverVehicleInfo(live.scheduled_trip_id);
           setDriverVehicleInfo(info);
@@ -58,15 +60,25 @@ export default function BookingDetailScreen({ route, navigation }) {
       } catch (e) {
         const bookingData = await getBookingDetail(bookingId);
         setBooking(bookingData);
+        bookingStatus = bookingData.booking_status;
         if (bookingData.scheduled_trip_id) {
           const info = await getDriverVehicleInfo(bookingData.scheduled_trip_id);
           setDriverVehicleInfo(info);
         }
       }
-      try {
-        const qr = await getBookingQR(bookingId);
-        setQrData(qr);
-      } catch (e) {}
+
+      // Only fetch QR for active bookings (booked, pending_payment, in_progress)
+      const isActive = bookingStatus === 'booked' || bookingStatus === 'pending_payment' || bookingStatus === 'in_progress';
+      if (isActive) {
+        try {
+          const qr = await getBookingQR(bookingId);
+          setQrData(qr);
+        } catch (err) {
+          // Silently ignore QR errors for inactive bookings
+          console.log('QR not available for this booking');
+        }
+      }
+
       try {
         const rating = await getBookingRating(bookingId);
         setExistingRating(rating);
@@ -140,15 +152,22 @@ export default function BookingDetailScreen({ route, navigation }) {
   const canCancel = displayData?.booking_status === 'booked' || displayData?.booking_status === 'pending_payment';
   const canRate = displayData?.booking_status === 'completed' && !existingRating;
   const liveProgress = status;
+
   const pickupStopName = displayData?.pickup_stop?.stop?.name || displayData?.pickup_stop?.name || 'Pickup';
   const dropoffStopName = displayData?.dropoff_stop?.stop?.name || displayData?.dropoff_stop?.name || 'Dropoff';
   const tripStartTime = trip?.planned_start_at ? new Date(trip.planned_start_at).toLocaleString() : 'Not scheduled';
+
+  // Safe rating display
   const ratingValue = driverVehicleInfo?.driver_average_rating;
   const ratingNum = ratingValue != null && !isNaN(parseFloat(ratingValue)) ? parseFloat(ratingValue) : null;
   const hasRating = ratingNum !== null;
   const ratingCount = driverVehicleInfo?.driver_rating_count || 0;
+
+  // Safe conversion for existing rating
   const existingTripRating = existingRating?.trip_rating ? Number(existingRating.trip_rating) : 0;
   const existingDriverRating = existingRating?.driver_rating ? Number(existingRating.driver_rating) : 0;
+
+  // OTP from displayData or liveProgress
   const otp = displayData?.otp || liveProgress?.otp;
 
   return (
@@ -264,7 +283,7 @@ export default function BookingDetailScreen({ route, navigation }) {
         {/* Live Progress */}
         {liveProgress && (
           <View className="bg-gray-900 rounded-2xl p-4 mb-4">
-            <Text className="text-white text-lg font-bold mb-2">Live Trip  Status</Text>
+            <Text className="text-white text-lg font-bold mb-2">Live Trip Status</Text>
             <View className="flex-row justify-between mb-3">
               <Text className="text-gray-400">
                 Boarding: {liveProgress.boarding_scan_completed ? '✅ Completed' : '⏳ Not yet'}
@@ -347,7 +366,7 @@ export default function BookingDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* QR Code */}
+        {/* QR Code – only shown for active bookings */}
         {qrData && (
           <View className="bg-gray-900 rounded-2xl p-4 mb-4 items-center">
             <Text className="text-white text-lg font-bold mb-3">Boarding Pass</Text>
