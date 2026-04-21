@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   Alert,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -18,7 +17,6 @@ export default function EmailEntryScreen({ route, navigation }) {
   const { flow } = route.params;
 
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState('passenger');
   const [loading, setLoading] = useState(false);
 
   const { sendOTP } = useAuth();
@@ -30,14 +28,15 @@ export default function EmailEntryScreen({ route, navigation }) {
     }
 
     setLoading(true);
-    const result = await sendOTP(email, flow === 'signup' ? role : null);
+    // For signup, always use 'passenger' role
+    const result = await sendOTP(email, flow === 'signup' ? 'passenger' : null);
     setLoading(false);
 
     if (result.success) {
       navigation.navigate('OTPVerification', {
         email,
         flow,
-        role: flow === 'signup' ? role : null,
+        role: flow === 'signup' ? 'passenger' : null,
       });
     } else {
       Alert.alert('Error', result.error);
@@ -93,55 +92,6 @@ export default function EmailEntryScreen({ route, navigation }) {
                   autoCapitalize="none"
                 />
               </View>
-
-              {/* ROLE SELECTOR */}
-              {flow === 'signup' && (
-                <View className="mb-8">
-                  <Text className="text-gray-400 text-xs mb-3">
-                    SELECT ROLE
-                  </Text>
-
-                  <View className="flex-row bg-white/5 rounded-2xl p-1 border border-white/10">
-                    
-                    {/* Passenger */}
-                    <TouchableOpacity
-                      className={`flex-1 py-3 rounded-xl ${
-                        role === 'passenger' ? 'bg-white' : ''
-                      }`}
-                      onPress={() => setRole('passenger')}
-                    >
-                      <Text
-                        className={`text-center font-semibold ${
-                          role === 'passenger'
-                            ? 'text-black'
-                            : 'text-white'
-                        }`}
-                      >
-                        Passenger
-                      </Text>
-                    </TouchableOpacity>
-
-                    {/* Driver */}
-                    <TouchableOpacity
-                      className={`flex-1 py-3 rounded-xl ${
-                        role === 'driver' ? 'bg-white' : ''
-                      }`}
-                      onPress={() => setRole('driver')}
-                    >
-                      <Text
-                        className={`text-center font-semibold ${
-                          role === 'driver'
-                            ? 'text-black'
-                            : 'text-white'
-                        }`}
-                      >
-                        Driver
-                      </Text>
-                    </TouchableOpacity>
-
-                  </View>
-                </View>
-              )}
 
               {/* BUTTON */}
               <AnimatedButton
