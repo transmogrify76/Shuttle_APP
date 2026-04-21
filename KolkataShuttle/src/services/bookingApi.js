@@ -178,3 +178,11 @@ export const getTransactions = async ({ status = null, month = null, year = null
   const response = await fetch(url, { headers });
   return handleResponse(response, url);
 };
+
+// Get invoice for a booking (only for completed trips)
+export const getInvoice = async (bookingId) => {
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE_URL}/passenger/bookings/${bookingId}/invoice`;
+  const response = await fetch(url, { headers });
+  return handleResponse(response, url);
+};

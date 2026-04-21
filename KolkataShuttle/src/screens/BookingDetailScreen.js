@@ -261,7 +261,7 @@ export default function BookingDetailScreen({ route, navigation }) {
 
         {/* Your Journey */}
         <View className="bg-gray-900 rounded-2xl p-4 mb-4">
-          <Text className="text-white text-lg font-bold mb-2">Your Journey</Text>
+          <Text className="text-white text-lg font-bold mb-2">Your Booking</Text>
           <View className="flex-row items-center mb-3">
             <View className="w-6 h-6 rounded-full bg-gray-800 items-center justify-center mr-3">
               <Ionicons name="log-in-outline" size={14} color="#fff" />

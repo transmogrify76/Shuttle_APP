@@ -12,22 +12,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/Header';
-import { getTransactions } from '../services/bookingApi';
+import { getTransactions, getInvoice } from '../services/bookingApi';
+import { generateInvoicePDF } from '../utils/invoiceGenerator';
 
 const statusOptions = ['all', 'paid', 'failed', 'refunded', 'refund_pending', 'created'];
 const monthOptions = [
-  { value: 1, label: 'January' },
-  { value: 2, label: 'February' },
-  { value: 3, label: 'March' },
-  { value: 4, label: 'April' },
-  { value: 5, label: 'May' },
-  { value: 6, label: 'June' },
-  { value: 7, label: 'July' },
-  { value: 8, label: 'August' },
-  { value: 9, label: 'September' },
-  { value: 10, label: 'October' },
-  { value: 11, label: 'November' },
-  { value: 12, label: 'December' },
+  { value: 1, label: 'January' }, { value: 2, label: 'February' }, { value: 3, label: 'March' },
+  { value: 4, label: 'April' }, { value: 5, label: 'May' }, { value: 6, label: 'June' },
+  { value: 7, label: 'July' }, { value: 8, label: 'August' }, { value: 9, label: 'September' },
+  { value: 10, label: 'October' }, { value: 11, label: 'November' }, { value: 12, label: 'December' },
 ];
 
 const getStatusColor = (status) => {
@@ -36,7 +29,6 @@ const getStatusColor = (status) => {
     case 'failed': return 'bg-red-900';
     case 'refunded': return 'bg-blue-900';
     case 'refund_pending': return 'bg-yellow-900';
-    case 'created': return 'bg-gray-800';
     default: return 'bg-gray-800';
   }
 };
@@ -60,7 +52,8 @@ export default function TransactionsScreen({ navigation }) {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null);
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [currentYear] = useState(new Date().getFullYear());
+  const [invoiceLoading, setInvoiceLoading] = useState({});
 
   useEffect(() => {
     loadTransactions();
@@ -85,18 +78,25 @@ export default function TransactionsScreen({ navigation }) {
   };
 
   const onRefresh = () => loadTransactions(true);
-
-  const applyFilters = () => {
-    setFilterModalVisible(false);
-    loadTransactions();
-  };
-
+  const applyFilters = () => { setFilterModalVisible(false); loadTransactions(); };
   const resetFilters = () => {
     setSelectedStatus('all');
     setSelectedMonth(null);
     setSelectedYear(null);
     setFilterModalVisible(false);
     loadTransactions();
+  };
+
+  const handleInvoice = async (bookingId) => {
+    setInvoiceLoading(prev => ({ ...prev, [bookingId]: true }));
+    try {
+      const invoiceData = await getInvoice(bookingId);
+      await generateInvoicePDF(invoiceData);
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Invoice not available for this booking');
+    } finally {
+      setInvoiceLoading(prev => ({ ...prev, [bookingId]: false }));
+    }
   };
 
   const renderTransactionItem = ({ item }) => {
@@ -107,15 +107,12 @@ export default function TransactionsScreen({ navigation }) {
     const amount = parseFloat(item.amount).toFixed(2);
     const date = new Date(item.created_at).toLocaleDateString();
     const time = new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const isCancelled = item.booking_status === 'cancelled';
-    const isCompleted = item.booking_status === 'completed';
+    const isCompleted = item.booking_status === 'completed' && item.payment_status === 'paid';
+    const isLoading = invoiceLoading[item.booking_id];
 
     return (
       <TouchableOpacity
-        onPress={() => {
-          // Optionally navigate to booking detail
-          navigation.navigate('BookingDetail', { bookingId: item.booking_id });
-        }}
+        onPress={() => navigation.navigate('BookingDetail', { bookingId: item.booking_id })}
         className="bg-gray-900 rounded-xl p-4 mb-3 mx-4 border border-gray-800"
       >
         <View className="flex-row justify-between items-center mb-2">
@@ -126,23 +123,22 @@ export default function TransactionsScreen({ navigation }) {
             </Text>
           </View>
         </View>
-        <Text className="text-gray-300 text-sm mb-1">
-          {pickupName} → {dropoffName}
-        </Text>
-        <Text className="text-gray-400 text-xs mb-1">
-          {date} at {time}
-        </Text>
-        {isCancelled && item.cancelled_at && (
-          <Text className="text-red-400 text-xs mb-1">
-            Cancelled: {new Date(item.cancelled_at).toLocaleDateString()}
-          </Text>
-        )}
-        {isCompleted && item.completed_at && (
-          <Text className="text-green-400 text-xs mb-1">
-            Completed: {new Date(item.completed_at).toLocaleDateString()}
-          </Text>
-        )}
+        <Text className="text-gray-300 text-sm mb-1">{pickupName} → {dropoffName}</Text>
+        <Text className="text-gray-400 text-xs mb-1">{date} at {time}</Text>
         <Text className="text-white font-bold text-lg mt-1">₹{amount}</Text>
+
+        {isCompleted && (
+          <TouchableOpacity
+            onPress={() => handleInvoice(item.booking_id)}
+            disabled={isLoading}
+            className="mt-3 flex-row items-center justify-center bg-white/10 rounded-full py-2 px-4"
+          >
+            <Ionicons name="document-text-outline" size={18} color="#fff" />
+            <Text className="text-white text-sm ml-2 font-medium">
+              {isLoading ? 'Generating...' : 'Download Invoice'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </TouchableOpacity>
     );
   };
@@ -159,9 +155,7 @@ export default function TransactionsScreen({ navigation }) {
       </View>
 
       {loading && !refreshing ? (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#fff" />
-        </View>
+        <View className="flex-1 justify-center items-center"><ActivityIndicator size="large" color="#fff" /></View>
       ) : transactions.length === 0 ? (
         <View className="flex-1 justify-center items-center">
           <Ionicons name="receipt-outline" size={60} color="#444" />
@@ -178,76 +172,42 @@ export default function TransactionsScreen({ navigation }) {
         />
       )}
 
-      {/* Filter Modal */}
+      {/* Filter Modal (same as before) */}
       <Modal visible={filterModalVisible} transparent animationType="slide">
         <View className="flex-1 bg-black/90 justify-end">
           <View className="bg-gray-900 rounded-t-3xl p-5 max-h-[80%]">
             <View className="flex-row justify-between items-center mb-4">
               <Text className="text-xl font-bold text-white">Filter Transactions</Text>
-              <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#fff" />
-              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setFilterModalVisible(false)}><Ionicons name="close" size={24} color="#fff" /></TouchableOpacity>
             </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView>
               <Text className="text-white font-semibold mb-2">Status</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
                 {statusOptions.map((status) => (
-                  <TouchableOpacity
-                    key={status}
-                    onPress={() => setSelectedStatus(status)}
-                    className={`px-4 py-2 rounded-full mr-2 ${
-                      selectedStatus === status ? 'bg-white' : 'bg-gray-800'
-                    }`}
-                  >
-                    <Text className={selectedStatus === status ? 'text-black' : 'text-white'}>
-                      {status === 'all' ? 'All' : status.replace('_', ' ').toUpperCase()}
-                    </Text>
+                  <TouchableOpacity key={status} onPress={() => setSelectedStatus(status)} className={`px-4 py-2 rounded-full mr-2 ${selectedStatus === status ? 'bg-white' : 'bg-gray-800'}`}>
+                    <Text className={selectedStatus === status ? 'text-black' : 'text-white'}>{status === 'all' ? 'All' : status.replace('_', ' ').toUpperCase()}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-
-              <Text className="text-white font-semibold mb-2">Month (optional)</Text>
+              <Text className="text-white font-semibold mb-2">Month</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
                 {monthOptions.map((month) => (
-                  <TouchableOpacity
-                    key={month.value}
-                    onPress={() => setSelectedMonth(selectedMonth === month.value ? null : month.value)}
-                    className={`px-4 py-2 rounded-full mr-2 ${
-                      selectedMonth === month.value ? 'bg-white' : 'bg-gray-800'
-                    }`}
-                  >
-                    <Text className={selectedMonth === month.value ? 'text-black' : 'text-white'}>
-                      {month.label}
-                    </Text>
+                  <TouchableOpacity key={month.value} onPress={() => setSelectedMonth(selectedMonth === month.value ? null : month.value)} className={`px-4 py-2 rounded-full mr-2 ${selectedMonth === month.value ? 'bg-white' : 'bg-gray-800'}`}>
+                    <Text className={selectedMonth === month.value ? 'text-black' : 'text-white'}>{month.label}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-
               <Text className="text-white font-semibold mb-2">Year</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
                 {[currentYear - 1, currentYear, currentYear + 1].map((year) => (
-                  <TouchableOpacity
-                    key={year}
-                    onPress={() => setSelectedYear(selectedYear === year ? null : year)}
-                    className={`px-4 py-2 rounded-full mr-2 ${
-                      selectedYear === year ? 'bg-white' : 'bg-gray-800'
-                    }`}
-                  >
-                    <Text className={selectedYear === year ? 'text-black' : 'text-white'}>
-                      {year}
-                    </Text>
+                  <TouchableOpacity key={year} onPress={() => setSelectedYear(selectedYear === year ? null : year)} className={`px-4 py-2 rounded-full mr-2 ${selectedYear === year ? 'bg-white' : 'bg-gray-800'}`}>
+                    <Text className={selectedYear === year ? 'text-black' : 'text-white'}>{year}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-
               <View className="flex-row justify-between">
-                <TouchableOpacity onPress={resetFilters} className="flex-1 mr-2 bg-gray-800 py-3 rounded-full">
-                  <Text className="text-white text-center font-medium">Reset</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={applyFilters} className="flex-1 ml-2 bg-white py-3 rounded-full">
-                  <Text className="text-black text-center font-medium">Apply</Text>
-                </TouchableOpacity>
+                <TouchableOpacity onPress={resetFilters} className="flex-1 mr-2 bg-gray-800 py-3 rounded-full"><Text className="text-white text-center font-medium">Reset</Text></TouchableOpacity>
+                <TouchableOpacity onPress={applyFilters} className="flex-1 ml-2 bg-white py-3 rounded-full"><Text className="text-black text-center font-medium">Apply</Text></TouchableOpacity>
               </View>
             </ScrollView>
           </View>

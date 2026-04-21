@@ -56,7 +56,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow Kolkata Shuttle to use your location to show nearby buses and routes."
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "extra": {
       "eas": {
