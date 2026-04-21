@@ -13,6 +13,7 @@ import TicketDetailScreen from '../screens/TicketDetailScreen';
 import CreateTicketScreen from '../screens/CreateTicketScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
+import ProfileScreen from '../screens/ProfileScreen'; // standalone
 
 const Stack = createStackNavigator();
 
@@ -34,6 +35,7 @@ export default function AppNavigator() {
           <Stack.Screen name="CreateTicket" component={CreateTicketScreen} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
           <Stack.Screen name="Transactions" component={TransactionsScreen} />
+          <Stack.Screen name="Profile" component={ProfileScreen} />
         </>
       ) : (
         <>

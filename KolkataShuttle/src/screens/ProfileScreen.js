@@ -65,24 +65,29 @@ export default function ProfileScreen({ navigation }) {  // ← added navigation
     }
   };
 
-  const handleCreateProfile = async () => {
-    if (!initialName.trim()) {
-      Alert.alert('Error', 'Please enter your full name');
-      return;
-    }
-    setCreating(true);
-    try {
-      const result = await createProfile(initialName);
-      setProfile(result.profile);
-      setNewName(result.profile.full_name);
-      setCreateModalVisible(false);
-      Alert.alert('Success', 'Profile created successfully');
-    } catch (error) {
-      Alert.alert('Error', error.message);
-    } finally {
-      setCreating(false);
-    }
-  };
+ const handleCreateProfile = async () => {
+  if (!initialName.trim()) {
+    Alert.alert('Error', 'Please enter your full name');
+    return;
+  }
+  setCreating(true);
+  try {
+    const result = await createProfile(initialName);
+    setProfile(result.profile);
+    setNewName(result.profile.full_name);
+    setCreateModalVisible(false);
+    Alert.alert('Success', 'Profile created successfully');
+    // After profile creation, navigate to the main app
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'MainTabs' }],
+    });
+  } catch (error) {
+    Alert.alert('Error', error.message);
+  } finally {
+    setCreating(false);
+  }
+};
 
   const handleUpdateName = async () => {
     if (!newName.trim()) return;

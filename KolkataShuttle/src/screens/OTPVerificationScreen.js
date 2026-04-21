@@ -12,8 +12,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import AnimatedButton from '../components/AnimatedButton';
 import { useAuth } from '../context/AuthContext';
+import { fetchProfile } from '../services/profileApi';
 
-export default function OTPVerificationScreen({ route }) {
+export default function OTPVerificationScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const { email, flow, role } = route.params;
 
@@ -60,47 +61,51 @@ export default function OTPVerificationScreen({ route }) {
 
     if (!result.success) {
       Alert.alert('Error', result.error);
+      return;
+    }
+
+    // After successful authentication, check if profile exists (has full_name)
+    try {
+      const profile = await fetchProfile();
+      if (profile && profile.full_name && profile.full_name.trim().length > 0) {
+        // Profile exists → go to main app
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' }],
+        });
+      } else {
+        // No profile or empty name → go to profile screen to complete it
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Profile' }],
+        });
+      }
+    } catch (error) {
+      // Profile not found → treat as missing profile
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Profile' }],
+      });
     }
   };
 
   return (
     <View className="flex-1 bg-black">
-      
-      {/* Glow Background */}
       <View className="absolute top-[-120px] left-[-80px] w-[260px] h-[260px] rounded-full bg-white/5" />
       <View className="absolute bottom-[-140px] right-[-80px] w-[300px] h-[300px] rounded-full bg-white/5" />
 
-      <LinearGradient
-        colors={['#000000', '#050505', '#000000']}
-        className="flex-1"
-      >
-        {/* Safe Top */}
+      <LinearGradient colors={['#000000', '#050505', '#000000']} className="flex-1">
         <View style={{ paddingTop: insets.top }} />
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          className="flex-1"
-        >
-          {/* CENTERED CONTENT */}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
           <View className="flex-1 justify-center px-6">
-
             <View>
-              {/* HEADER */}
               <View className="mb-10">
-                <Text className="text-white text-3xl font-extrabold tracking-tight">
-                  Verify OTP
-                </Text>
-
-                <Text className="text-gray-400 text-sm mt-2">
-                  Enter the 6-digit code sent to
-                </Text>
-
-                <Text className="text-white text-sm mt-1 font-medium">
-                  {email}
-                </Text>
+                <Text className="text-white text-3xl font-extrabold tracking-tight">Verify OTP</Text>
+                <Text className="text-gray-400 text-sm mt-2">Enter the 6-digit code sent to</Text>
+                <Text className="text-white text-sm mt-1 font-medium">{email}</Text>
               </View>
 
-              {/* OTP INPUT BOXES */}
               <View className="flex-row justify-between mb-10">
                 {otp.map((digit, index) => (
                   <TextInput
@@ -120,30 +125,18 @@ export default function OTPVerificationScreen({ route }) {
                 ))}
               </View>
 
-              {/* VERIFY BUTTON */}
-              <AnimatedButton
-                title={loading ? 'Verifying...' : 'Verify'}
-                onPress={handleSubmit}
-                disabled={loading}
-              />
+              <AnimatedButton title={loading ? 'Verifying...' : 'Verify'} onPress={handleSubmit} disabled={loading} />
 
-              {/* RESEND */}
               <TouchableOpacity className="mt-6 items-center">
                 <Text className="text-gray-400 text-sm">
-                  Didn’t receive code?{' '}
-                  <Text className="text-white font-semibold">
-                    Resend
-                  </Text>
+                  Didn’t receive code? <Text className="text-white font-semibold">Resend</Text>
                 </Text>
               </TouchableOpacity>
             </View>
-
           </View>
         </KeyboardAvoidingView>
 
-        {/* Safe Bottom */}
         <View style={{ paddingBottom: insets.bottom + 10 }} />
-
       </LinearGradient>
     </View>
   );
