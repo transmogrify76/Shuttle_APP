@@ -166,8 +166,10 @@ export default function ProfileScreen({ navigation }) {  // ← added navigation
     { icon: 'card-outline', label: 'Payment Methods' },
     { icon: 'help-circle-outline', label: 'Help & Support' },
     { icon: 'settings-outline', label: 'Settings' },
+    { icon: 'receipt-outline', label: 'Transaction History', onPress: () => navigation.navigate('Transactions') },
     { icon: 'chatbubble-outline', label: 'Support', onPress: () => navigation.navigate('SupportTickets') },
     { icon: 'log-out-outline', label: 'Logout', color: '#ef4444', onPress: logout },
+    
   ];
 
   if (loading) {

@@ -167,3 +167,14 @@ export const getBookingCurrentStatus = async (bookingId) => {
   if (!response.ok) throw new Error(data.detail?.message || 'Failed to fetch current status');
   return data;
 };
+
+export const getTransactions = async ({ status = null, month = null, year = null, limit = 50, offset = 0 } = {}) => {
+  const headers = await getAuthHeaders();
+  let url = `${API_BASE_URL}/passenger/transactions?limit=${limit}&offset=${offset}`;
+  if (status) url += `&status=${status}`;
+  if (month && year) url += `&month=${month}&year=${year}`;
+  else if (month && !year) throw new Error('Year required when month filter is provided');
+  if (year && !month) url += `&year=${year}`;
+  const response = await fetch(url, { headers });
+  return handleResponse(response, url);
+};
