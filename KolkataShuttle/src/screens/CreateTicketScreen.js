@@ -43,7 +43,7 @@ export default function CreateTicketScreen({ navigation }) {
   const removeAttachment = () => setAttachment(null);
 
   const handleSubmit = async () => {
-    if (!subject.trim()) {
+    if (!subject.trim()) { 
       Alert.alert('Error', 'Please enter a subject');
       return;
     }

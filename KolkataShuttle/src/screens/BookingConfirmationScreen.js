@@ -27,8 +27,6 @@ export default function BookingConfirmationScreen({ route, navigation }) {
         </View>
         <Text className="text-white text-3xl font-bold text-center">Booking Confirmed!</Text>
         <Text className="text-gray-400 text-base text-center mt-2 mb-6">Your trip has been successfully booked.</Text>
-
-        {/* OTP Display */}
         {otp && (
           <View className="bg-gray-900 rounded-2xl p-4 mb-6 w-full border border-gray-800">
             <Text className="text-gray-400 text-sm text-center mb-1">Boarding OTP</Text>
