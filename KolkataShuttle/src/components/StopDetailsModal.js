@@ -35,4 +35,4 @@ export default function StopDetailsModal({ visible, onClose, stops, routeName })
       </View>
     </Modal>
   );
-}
+}  

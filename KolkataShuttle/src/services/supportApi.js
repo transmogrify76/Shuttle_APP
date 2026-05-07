@@ -8,7 +8,6 @@ const getAuthHeaders = async (isMultipart = false) => {
   return headers;
 };
 
-// List all tickets
 export const listSupportTickets = async () => {
   const headers = await getAuthHeaders();
   const response = await fetch(`${API_BASE_URL}/passenger/support`, { headers });
@@ -17,7 +16,6 @@ export const listSupportTickets = async () => {
   return data;
 };
 
-// Get a single ticket
 export const getSupportTicket = async (ticketId) => {
   const headers = await getAuthHeaders();
   const response = await fetch(`${API_BASE_URL}/passenger/support/${ticketId}`, { headers });
@@ -26,7 +24,7 @@ export const getSupportTicket = async (ticketId) => {
   return data;
 };
 
-// Create a new ticket (multipart/form-data)
+
 export const createSupportTicket = async (subject, description, fileUri = null) => {
   const headers = await getAuthHeaders(true);
   const formData = new FormData();

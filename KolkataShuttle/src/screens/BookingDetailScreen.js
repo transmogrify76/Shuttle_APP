@@ -195,7 +195,6 @@ export default function BookingDetailScreen({ route, navigation }) {
           {cancelling && <ActivityIndicator size="small" color="#ef4444" className="mt-2" />}
         </View>
 
-        {/* OTP Display */}
         {otp && (
           <View className="bg-gray-900 rounded-2xl p-4 mb-4">
             <Text className="text-gray-400 text-sm mb-1">Boarding OTP</Text>
@@ -204,7 +203,6 @@ export default function BookingDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Driver & Vehicle Info */}
         {driverVehicleInfo && (
           <View className="bg-gray-900 rounded-2xl p-4 mb-4">
             <Text className="text-white text-lg font-bold mb-2">Driver & Vehicle</Text>
@@ -237,7 +235,6 @@ export default function BookingDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Trip Info */}
         <View className="bg-gray-900 rounded-2xl p-4 mb-4">
           <View className="flex-row justify-between items-center mb-2">
             <Text className="text-white text-lg font-bold">Trip Details</Text>
@@ -259,7 +256,6 @@ export default function BookingDetailScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* Your Journey */}
         <View className="bg-gray-900 rounded-2xl p-4 mb-4">
           <Text className="text-white text-lg font-bold mb-2">Your Booking</Text>
           <View className="flex-row items-center mb-3">
@@ -280,7 +276,6 @@ export default function BookingDetailScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* Live Progress */}
         {liveProgress && (
           <View className="bg-gray-900 rounded-2xl p-4 mb-4">
             <Text className="text-white text-lg font-bold mb-2">Live Trip Status</Text>
