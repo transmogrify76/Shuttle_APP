@@ -169,6 +169,7 @@ export default function ProfileScreen({ navigation }) {  // ← added navigation
 
   const menuItems = [
     { icon: 'card-outline', label: 'Payment Methods' },
+    { icon: 'card-outline', label: 'RFID Wallet', onPress: () => navigation.navigate('RfidWallet') },
     { icon: 'help-circle-outline', label: 'Help & Support' },
     { icon: 'settings-outline', label: 'Settings' },
     { icon: 'receipt-outline', label: 'Transaction History', onPress: () => navigation.navigate('Transactions') },

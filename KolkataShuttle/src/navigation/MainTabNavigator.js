@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import MyBookingsScreen from '../screens/MyBookingsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import RoutesScreen from '../screens/RoutesScreen'; // new
+import RoutesScreen from '../screens/RoutesScreen'; 
 
 const Tab = createBottomTabNavigator();
 
@@ -21,7 +21,7 @@ export default function MainTabNavigator() {
           } else if (route.name === 'Routes') {
             iconName = focused ? 'map' : 'map-outline';
           } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline';
+            iconName = focused ? 'person' : 'person-outli ne';
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
