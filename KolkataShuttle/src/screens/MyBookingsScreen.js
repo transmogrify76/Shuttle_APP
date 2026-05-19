@@ -89,12 +89,9 @@ export default function MyBookingsScreen({ navigation }) {
         const response = await getUpcomingBookings();
         setUpcoming(response.items || []);
       } else if (activeTab === 'ongoing') {
-        // 1. Get current bookings list
         const response = await getCurrentBookings();
         const items = response.items || [];
         setOngoing(items);
-
-        // 2. For each, fetch live current-status
         const statusMap = {};
         for (const booking of items) {
           try {
@@ -136,6 +133,7 @@ export default function MyBookingsScreen({ navigation }) {
     const status = item.booking_status || 'unknown';
     const isOngoing = activeTab === 'ongoing';
     const liveStatus = isOngoing ? ongoingStatus[item.id] : null;
+    const seatNumber = item.seat_number;
 
     let statusColor = 'bg-gray-800';
     let statusTextColor = 'text-gray-400';
@@ -190,6 +188,12 @@ export default function MyBookingsScreen({ navigation }) {
           <Ionicons name="cash-outline" size={14} color="#aaa" />
           <Text className="text-gray-400 text-sm ml-2">₹{item.fare_amount}</Text>
         </View>
+        {seatNumber && (
+          <View className="flex-row items-center mt-1">
+            <Ionicons name="grid-outline" size={14} color="#aaa" />
+            <Text className="text-gray-400 text-sm ml-2">Seat: {seatNumber}</Text>
+          </View>
+        )}
         {otp && (
           <View className="flex-row items-center mt-1">
             <Ionicons name="key-outline" size={14} color="#aaa" />

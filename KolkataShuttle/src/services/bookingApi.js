@@ -37,13 +37,13 @@ export const previewFare = async ({ route_id, pickup_stop_id, dropoff_stop_id })
 };
 
 // Create booking
-export const createBooking = async ({ scheduled_trip_id, pickup_stop_id, dropoff_stop_id }) => {
+export const createBooking = async ({ scheduled_trip_id, pickup_stop_id, dropoff_stop_id, seat_number }) => {
   const headers = await getAuthHeaders();
   const url = `${API_BASE_URL}/passenger/bookings`;
   const response = await fetch(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ scheduled_trip_id, pickup_stop_id, dropoff_stop_id }),
+    body: JSON.stringify({ scheduled_trip_id, pickup_stop_id, dropoff_stop_id, seat_number }),
   });
   return handleResponse(response, url);
 };

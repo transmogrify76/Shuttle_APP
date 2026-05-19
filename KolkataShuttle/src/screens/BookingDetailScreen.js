@@ -67,14 +67,13 @@ export default function BookingDetailScreen({ route, navigation }) {
         }
       }
 
-      // Only fetch QR for active bookings (booked, pending_payment, in_progress)
+      // Only fetch QR for active bookings
       const isActive = bookingStatus === 'booked' || bookingStatus === 'pending_payment' || bookingStatus === 'in_progress';
       if (isActive) {
         try {
           const qr = await getBookingQR(bookingId);
           setQrData(qr);
         } catch (err) {
-          // Silently ignore QR errors for inactive bookings
           console.log('QR not available for this booking');
         }
       }
@@ -167,8 +166,9 @@ export default function BookingDetailScreen({ route, navigation }) {
   const existingTripRating = existingRating?.trip_rating ? Number(existingRating.trip_rating) : 0;
   const existingDriverRating = existingRating?.driver_rating ? Number(existingRating.driver_rating) : 0;
 
-  // OTP from displayData or liveProgress
+  // OTP and seat number
   const otp = displayData?.otp || liveProgress?.otp;
+  const seatNumber = displayData?.seat_number || trip?.seat_number;
 
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
@@ -195,6 +195,7 @@ export default function BookingDetailScreen({ route, navigation }) {
           {cancelling && <ActivityIndicator size="small" color="#ef4444" className="mt-2" />}
         </View>
 
+        {/* OTP */}
         {otp && (
           <View className="bg-gray-900 rounded-2xl p-4 mb-4">
             <Text className="text-gray-400 text-sm mb-1">Boarding OTP</Text>
@@ -203,6 +204,7 @@ export default function BookingDetailScreen({ route, navigation }) {
           </View>
         )}
 
+        {/* Driver & Vehicle Info */}
         {driverVehicleInfo && (
           <View className="bg-gray-900 rounded-2xl p-4 mb-4">
             <Text className="text-white text-lg font-bold mb-2">Driver & Vehicle</Text>
@@ -235,6 +237,7 @@ export default function BookingDetailScreen({ route, navigation }) {
           </View>
         )}
 
+        {/* Trip Details */}
         <View className="bg-gray-900 rounded-2xl p-4 mb-4">
           <View className="flex-row justify-between items-center mb-2">
             <Text className="text-white text-lg font-bold">Trip Details</Text>
@@ -256,6 +259,7 @@ export default function BookingDetailScreen({ route, navigation }) {
           </View>
         </View>
 
+        {/* Your Booking (with Seat Number) */}
         <View className="bg-gray-900 rounded-2xl p-4 mb-4">
           <Text className="text-white text-lg font-bold mb-2">Your Booking</Text>
           <View className="flex-row items-center mb-3">
@@ -266,7 +270,7 @@ export default function BookingDetailScreen({ route, navigation }) {
               <Text className="text-white font-medium">Pickup: {pickupStopName}</Text>
             </View>
           </View>
-          <View className="flex-row items-center">
+          <View className="flex-row items-center mb-3">
             <View className="w-6 h-6 rounded-full bg-gray-800 items-center justify-center mr-3">
               <Ionicons name="log-out-outline" size={14} color="#fff" />
             </View>
@@ -274,8 +278,17 @@ export default function BookingDetailScreen({ route, navigation }) {
               <Text className="text-white font-medium">Dropoff: {dropoffStopName}</Text>
             </View>
           </View>
+          <View className="flex-row items-center">
+            <View className="w-6 h-6 rounded-full bg-gray-800 items-center justify-center mr-3">
+              <Ionicons name="grid-outline" size={14} color="#fff" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-white font-medium">Seat: {seatNumber || 'Not assigned'}</Text>
+            </View>
+          </View>
         </View>
 
+        {/* Live Progress */}
         {liveProgress && (
           <View className="bg-gray-900 rounded-2xl p-4 mb-4">
             <Text className="text-white text-lg font-bold mb-2">Live Trip Status</Text>
@@ -361,7 +374,7 @@ export default function BookingDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* QR Code – only shown for active bookings */}
+        {/* QR Code */}
         {qrData && (
           <View className="bg-gray-900 rounded-2xl p-4 mb-4 items-center">
             <Text className="text-white text-lg font-bold mb-3">Boarding Pass</Text>

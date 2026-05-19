@@ -6,20 +6,22 @@ import { StatusBar } from 'expo-status-bar';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { AuthProvider } from './src/context/AuthContext';
 import { NotificationProvider } from './src/context/NotificationContext';
+import { SeatmapProvider } from './src/context/SeatmapContext';
 import AppNavigator from './src/navigation/AppNavigator';
-
 
 export default function App() {
   return (
     <SafeAreaProvider>
       <PaperProvider>
         <AuthProvider>
-          <NotificationProvider>
-            <NavigationContainer>
-              <StatusBar style="light" />
-              <AppNavigator />
-            </NavigationContainer>
-          </NotificationProvider>
+          <SeatmapProvider>
+            <NotificationProvider>
+              <NavigationContainer>
+                <StatusBar style="light" />
+                <AppNavigator />
+              </NavigationContainer>
+            </NotificationProvider>
+          </SeatmapProvider>
         </AuthProvider>
       </PaperProvider>
     </SafeAreaProvider>
