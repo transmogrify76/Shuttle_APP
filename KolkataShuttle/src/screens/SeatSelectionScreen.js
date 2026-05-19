@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/Header';
 import CustomButton from '../components/CustomButton';
 import RazorpayWebView from '../components/RazorpayWebView';
+import BusSeatMap from '../components/BusSeatMap';
 import { useAuth } from '../context/AuthContext';
 import { useSeatmap } from '../context/SeatmapContext';
 import { createBooking, verifyBookingPayment, getLegAvailableSeats, getDriverVehicleInfo } from '../services/bookingApi';
@@ -29,13 +30,12 @@ export default function SeatSelectionScreen({ route, navigation }) {
   const [currentBooking, setCurrentBooking] = useState(null);
   const [currentPaymentOrder, setCurrentPaymentOrder] = useState(null);
   const [seatCapacity, setSeatCapacity] = useState(0);
-  const [availableSeatsList, setAvailableSeatsList] = useState([]);
   const [occupiedSeatsList, setOccupiedSeatsList] = useState([]);
   const [tripBookable, setTripBookable] = useState(false);
 
   const { seatmapData, subscribe, refresh, unsubscribe } = useSeatmap();
 
-  // Fetch initial seat data via REST (fallback) and subscribe to WebSocket
+  // Fetch initial seat data via REST and subscribe to WebSocket
   useEffect(() => {
     const fetchInitial = async () => {
       try {
@@ -46,7 +46,6 @@ export default function SeatSelectionScreen({ route, navigation }) {
         ]);
         setDriverInfo(driver);
         setSeatCapacity(legInfo.seat_capacity);
-        setAvailableSeatsList(legInfo.available_seat_numbers || []);
         setOccupiedSeatsList(legInfo.occupied_seat_numbers || []);
         setTripBookable(legInfo.trip_bookable);
       } catch (err) {
@@ -75,19 +74,17 @@ export default function SeatSelectionScreen({ route, navigation }) {
   useEffect(() => {
     if (seatmapData) {
       setSeatCapacity(seatmapData.seat_capacity);
-      setAvailableSeatsList(seatmapData.available_seat_numbers || []);
       setOccupiedSeatsList(seatmapData.occupied_seat_numbers || []);
       setTripBookable(seatmapData.trip_bookable);
       // If selected seat is no longer available, clear selection
-      if (selectedSeat && !seatmapData.available_seat_numbers.includes(selectedSeat)) {
+      if (selectedSeat && seatmapData.occupied_seat_numbers.includes(selectedSeat)) {
         setSelectedSeat(null);
         Alert.alert('Seat no longer available', 'Please select another seat');
       }
     }
   }, [seatmapData]);
 
-  const handleSeatPress = (seatNumber) => {
-    if (occupiedSeatsList.includes(seatNumber)) return;
+  const handleSeatSelect = (seatNumber) => {
     setSelectedSeat(seatNumber);
   };
 
@@ -185,14 +182,6 @@ export default function SeatSelectionScreen({ route, navigation }) {
     );
   }
 
-  // Render seat grid (example: 4 columns, rows = seatCapacity/4 rounded up)
-  const cols = 4;
-  const rows = Math.ceil(seatCapacity / cols);
-  const seats = [];
-  for (let i = 1; i <= seatCapacity; i++) {
-    seats.push(i);
-  }
-
   return (
     <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       <Header title="Select Seats" />
@@ -232,35 +221,12 @@ export default function SeatSelectionScreen({ route, navigation }) {
 
         <View className="mx-5 mt-6">
           <Text className="text-white text-lg font-semibold mb-3">Select a seat</Text>
-          {[...Array(rows)].map((_, rowIdx) => (
-            <View key={rowIdx} className="flex-row justify-between mb-2">
-              {seats.slice(rowIdx * cols, (rowIdx + 1) * cols).map(seatNum => {
-                const isOccupied = occupiedSeatsList.includes(seatNum);
-                const isAvailable = availableSeatsList.includes(seatNum);
-                const isSelected = selectedSeat === seatNum;
-                let seatStyle = 'bg-gray-800 border-gray-700';
-                if (isOccupied) seatStyle = 'bg-red-900 border-red-800';
-                else if (isSelected) seatStyle = 'bg-white border-white';
-                else if (isAvailable) seatStyle = 'bg-green-900 border-green-800';
-                return (
-                  <TouchableOpacity
-                    key={seatNum}
-                    onPress={() => handleSeatPress(seatNum)}
-                    disabled={isOccupied}
-                    className={`w-16 h-16 rounded-xl border-2 items-center justify-center ${seatStyle}`}
-                  >
-                    <Text className={`text-lg font-bold ${isSelected ? 'text-black' : (isOccupied ? 'text-red-300' : 'text-white')}`}>
-                      {seatNum}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-              {/* fill empty columns */}
-              {Array.from({ length: cols - (seats.slice(rowIdx * cols, (rowIdx + 1) * cols).length) }).map((_, i) => (
-                <View key={`empty-${i}`} className="w-16 h-16" />
-              ))}
-            </View>
-          ))}
+          <BusSeatMap
+            seatCapacity={seatCapacity}
+            occupiedSeats={occupiedSeatsList}
+            selectedSeat={selectedSeat}
+            onSeatSelect={handleSeatSelect}
+          />
         </View>
 
         <View className="bg-gray-900 mx-5 my-3 p-5 rounded-2xl">
@@ -269,7 +235,7 @@ export default function SeatSelectionScreen({ route, navigation }) {
             <Text className="text-white font-medium">{selectedSeat || 'None'}</Text>
           </View>
           <View className="flex-row justify-between mb-2">
-            <Text className="text-gray-400">Per seat fare</Text>
+            <Text className="text-gray-400">Fare</Text>
             <Text className="text-white font-medium">₹{fareAmount}</Text>
           </View>
           <View className="flex-row justify-between mt-2 pt-2 border-t border-gray-800">

@@ -11,6 +11,8 @@ module.exports = {
         border: '#333333',
         text: '#ffffff',
         textSecondary: '#aaaaaa',
+        green: { 800: '#166534' },
+        red: { 800: '#991b1b' },
       },
     },
   },
