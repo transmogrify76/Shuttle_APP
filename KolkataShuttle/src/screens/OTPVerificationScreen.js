@@ -16,7 +16,7 @@ import { fetchProfile } from '../services/profileApi';
 
 export default function OTPVerificationScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
-  const { email, flow, role } = route.params;
+  const { email, flow, role } = route.params; // role is 'passenger' but we'll ignore it
 
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const inputs = useRef([]);
@@ -52,8 +52,10 @@ export default function OTPVerificationScreen({ route, navigation }) {
 
     let result;
     if (flow === 'signup') {
-      result = await signup(email, otpString, role);
+      // signup will use default role = 'passenger' (function default)
+      result = await signup(email, otpString);
     } else {
+      // login also uses default role = 'passenger'
       result = await login(email, otpString);
     }
 
@@ -68,20 +70,17 @@ export default function OTPVerificationScreen({ route, navigation }) {
     try {
       const profile = await fetchProfile();
       if (profile && profile.full_name && profile.full_name.trim().length > 0) {
-        // Profile exists → go to main app
         navigation.reset({
           index: 0,
           routes: [{ name: 'MainTabs' }],
         });
       } else {
-        // No profile or empty name → go to profile screen to complete it
         navigation.reset({
           index: 0,
           routes: [{ name: 'Profile' }],
         });
       }
     } catch (error) {
-      // Profile not found → treat as missing profile
       navigation.reset({
         index: 0,
         routes: [{ name: 'Profile' }],

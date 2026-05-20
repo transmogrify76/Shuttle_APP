@@ -28,7 +28,8 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const signup = async (email, otp, role) => {
+  // Signup: always includes role (default 'passenger')
+  const signup = async (email, otp, role = 'passenger') => {
     const response = await fetch(`${API_BASE_URL}/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -45,11 +46,12 @@ export const AuthProvider = ({ children }) => {
     return { success: false, error: data.detail?.message || 'Signup failed' };
   };
 
-  const login = async (email, otp) => {
+  // Login: now also includes role (default 'passenger')
+  const login = async (email, otp, role = 'passenger') => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, otp }),
+      body: JSON.stringify({ email, otp, role }),
     });
     const data = await response.json();
     if (response.ok) {
@@ -69,9 +71,10 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  const sendOTP = async (email, role = null) => {
-    const endpoint = role ? '/auth/signup/send-otp' : '/auth/login/send-otp';
-    const body = role ? { email, role } : { email };
+  // Send OTP: now accepts 'flow' ('login' or 'signup') and always includes role = 'passenger'
+  const sendOTP = async (email, flow) => {
+    const endpoint = flow === 'signup' ? '/auth/signup/send-otp' : '/auth/login/send-otp';
+    const body = { email, role: 'passenger' };
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
