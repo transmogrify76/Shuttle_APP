@@ -11,10 +11,12 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
-  Image,
+  StyleSheet,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import OSMMap from '../components/OSMMap';
 import AnimatedButton from '../components/AnimatedButton';
@@ -26,56 +28,155 @@ import {
 } from '../services/routeApi';
 import { previewFare, getDriverVehicleInfo, getLegAvailableSeats } from '../services/bookingApi';
 import { getRouteBetweenStops } from '../services/routingApi';
+import { fetchProfile } from '../services/profileApi';
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
-const BOTTOM_SHEET_MAX_HEIGHT = screenHeight * 0.7;
-const BOTTOM_SHEET_MIN_HEIGHT = screenHeight * 0.15;
+const BOTTOM_SHEET_MAX_HEIGHT = screenHeight * 0.72;
+const BOTTOM_SHEET_MIN_HEIGHT = screenHeight * 0.18;
 
-// ----- Stop Selector Modal Component (unchanged) -----
-const StopSelector = ({ stops, selectedId, onSelect, label, icon }) => {
+// ─── DESIGN TOKENS ─────────────────────────────────────────────────────────────
+const C = {
+  bg: '#0A0A0F',
+  surface: '#13131A',
+  surfaceUp: '#1C1C26',
+  surfaceHigh: '#242432',
+  border: 'rgba(255,255,255,0.07)',
+  borderStrong: 'rgba(255,255,255,0.13)',
+  gold: '#C9A84C',
+  goldLight: '#E8C76B',
+  goldDim: 'rgba(201,168,76,0.18)',
+  white: '#FFFFFF',
+  textPrimary: '#F0EFE8',
+  textSecondary: '#9997A0',
+  textMuted: '#5C5A65',
+  green: '#34C97E',
+  greenDim: 'rgba(52,201,126,0.15)',
+  blue: '#4A90D9',
+  blueDim: 'rgba(74,144,217,0.15)',
+  red: '#E05252',
+  shimmer: 'rgba(255,255,255,0.04)',
+};
+
+// ─── TYPOGRAPHY ─────────────────────────────────────────────────────────────────
+const T = StyleSheet.create({
+  displayLg: { fontSize: 34, fontWeight: '800', color: C.textPrimary, letterSpacing: -1.2, lineHeight: 40 },
+  displayMd: { fontSize: 26, fontWeight: '700', color: C.textPrimary, letterSpacing: -0.8 },
+  headingSm: { fontSize: 13, fontWeight: '700', color: C.textSecondary, letterSpacing: 1.6, textTransform: 'uppercase' },
+  bodyLg: { fontSize: 16, fontWeight: '600', color: C.textPrimary },
+  bodyMd: { fontSize: 14, fontWeight: '500', color: C.textPrimary },
+  bodySm: { fontSize: 12, fontWeight: '400', color: C.textSecondary },
+  mono: { fontSize: 11, fontWeight: '600', color: C.gold, letterSpacing: 0.5 },
+});
+
+// ─── GLASS CARD WRAPPER ─────────────────────────────────────────────────────────
+const GlassCard = ({ children, style, noBorder }) => (
+  <View style={[{
+    backgroundColor: C.surfaceUp,
+    borderRadius: 20,
+    borderWidth: noBorder ? 0 : 1,
+    borderColor: C.border,
+    overflow: 'hidden',
+  }, style]}>
+    {children}
+  </View>
+);
+
+// ─── GOLD PILL TAG ──────────────────────────────────────────────────────────────
+const GoldTag = ({ label }) => (
+  <View style={{ backgroundColor: C.goldDim, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(201,168,76,0.3)' }}>
+    <Text style={T.mono}>{label}</Text>
+  </View>
+);
+
+// ─── STOP SELECTOR ─────────────────────────────────────────────────────────────
+const StopSelector = ({ stops, selectedId, onSelect, label, icon, accent }) => {
   const [modalVisible, setModalVisible] = useState(false);
+  const scale = useRef(new Animated.Value(1)).current;
   const selectedStop = stops?.find(s => s.stop?.id === selectedId);
+
+  const pressIn = () => Animated.spring(scale, { toValue: 0.96, useNativeDriver: true, speed: 40 }).start();
+  const pressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20 }).start();
+
   return (
     <>
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => setModalVisible(true)}
-        className="flex-row items-center justify-between bg-white rounded-2xl p-4 mb-3 shadow-sm border border-gray-100"
-      >
-        <View className="flex-row items-center flex-1">
-          <Ionicons name={icon || 'location-outline'} size={22} color="#000" />
-          <Text className="ml-3 text-black font-medium flex-1">
-            {selectedStop ? selectedStop.stop.name : label}
-          </Text>
-        </View>
-        <Ionicons name="chevron-down" size={20} color="#666" />
+      <TouchableOpacity activeOpacity={1} onPressIn={pressIn} onPressOut={pressOut} onPress={() => setModalVisible(true)}>
+        <Animated.View style={[{
+          transform: [{ scale }],
+          backgroundColor: C.surfaceUp,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: selectedStop ? 'rgba(201,168,76,0.35)' : C.border,
+          marginBottom: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+        }]}>
+          <View style={{
+            width: 36, height: 36, borderRadius: 10,
+            backgroundColor: accent === 'gold' ? C.goldDim : C.blueDim,
+            alignItems: 'center', justifyContent: 'center', marginRight: 12,
+          }}>
+            <Ionicons name={icon} size={18} color={accent === 'gold' ? C.gold : C.blue} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[T.bodySm, { marginBottom: 2 }]}>{label}</Text>
+            <Text style={selectedStop ? T.bodyMd : [T.bodySm, { color: C.textMuted }]} numberOfLines={1}>
+              {selectedStop ? selectedStop.stop.name : 'Tap to select'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
+        </Animated.View>
       </TouchableOpacity>
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl p-5">
-            <Text className="text-xl font-bold mb-4">{label}</Text>
-            {stops?.length ? (
-              stops.map((stop, idx) => (
+
+      {/* Stop Modal */}
+      <Modal visible={modalVisible} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' }}>
+          <View style={{
+            backgroundColor: C.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28,
+            borderTopWidth: 1, borderColor: C.borderStrong, maxHeight: screenHeight * 0.65,
+          }}>
+            {/* Handle */}
+            <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 8 }}>
+              <View style={{ width: 36, height: 4, backgroundColor: C.surfaceHigh, borderRadius: 2 }} />
+            </View>
+            <View style={{ paddingHorizontal: 24, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={T.displayMd}>{label}</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={{ padding: 6 }}>
+                <Ionicons name="close" size={22} color={C.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}>
+              {stops?.map((stop, idx) => (
                 <TouchableOpacity
-                  key={stop.stop?.id ? `${stop.stop.id}-${idx}` : `stop-${idx}`}
-                  className="py-3 border-b border-gray-100"
-                  onPress={() => {
-                    onSelect(stop.stop?.id);
-                    setModalVisible(false);
+                  key={stop.stop?.id || idx}
+                  onPress={() => { onSelect(stop.stop?.id); setModalVisible(false); }}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center',
+                    paddingVertical: 14,
+                    borderBottomWidth: 1, borderColor: C.border,
                   }}
                 >
-                  <Text className="text-black">{stop.stop?.name || stop.name}</Text>
+                  <View style={{
+                    width: 28, height: 28, borderRadius: 8,
+                    backgroundColor: selectedId === stop.stop?.id ? C.goldDim : C.surfaceHigh,
+                    alignItems: 'center', justifyContent: 'center', marginRight: 14,
+                    borderWidth: selectedId === stop.stop?.id ? 1 : 0,
+                    borderColor: 'rgba(201,168,76,0.4)',
+                  }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: selectedId === stop.stop?.id ? C.gold : C.textMuted }}>
+                      {idx + 1}
+                    </Text>
+                  </View>
+                  <Text style={selectedId === stop.stop?.id ? [T.bodyMd, { color: C.gold }] : T.bodyMd}>
+                    {stop.stop?.name}
+                  </Text>
+                  {selectedId === stop.stop?.id && (
+                    <Ionicons name="checkmark" size={16} color={C.gold} style={{ marginLeft: 'auto' }} />
+                  )}
                 </TouchableOpacity>
-              ))
-            ) : (
-              <Text className="text-gray-500 text-center py-4">No stops available</Text>
-            )}
-            <TouchableOpacity
-              onPress={() => setModalVisible(false)}
-              className="mt-4 py-3 bg-gray-100 rounded-full"
-            >
-              <Text className="text-center text-black font-medium">Cancel</Text>
-            </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -83,136 +184,205 @@ const StopSelector = ({ stops, selectedId, onSelect, label, icon }) => {
   );
 };
 
-// ----- Ride Card Component (unchanged, already shows AC from vehicle) -----
+// ─── RIDE CARD ──────────────────────────────────────────────────────────────────
 const RideCard = ({ trip, selected, onPress, onViewStops, onInfoPress, seatInfo }) => {
   const scale = useRef(new Animated.Value(1)).current;
-  const animateIn = () => Animated.spring(scale, { toValue: 0.98, useNativeDriver: true }).start();
-  const animateOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
+  const shimmer = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (selected) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(shimmer, { toValue: 1, duration: 2000, useNativeDriver: false }),
+          Animated.timing(shimmer, { toValue: 0, duration: 2000, useNativeDriver: false }),
+        ])
+      ).start();
+    } else {
+      shimmer.stopAnimation();
+      shimmer.setValue(0);
+    }
+  }, [selected]);
+
+  const pressIn = () => Animated.spring(scale, { toValue: 0.96, useNativeDriver: true, speed: 40 }).start();
+  const pressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20 }).start();
 
   const vehicle = trip?.vehicle || {};
-  const vehicleName = vehicle?.vehicle_name || vehicle?.registration_number || 'Bus';
+  const vehicleName = vehicle?.vehicle_name || vehicle?.registration_number || 'Shuttle';
   const hasAC = vehicle?.has_ac;
   const startTime = trip?.planned_start_at
     ? new Date(trip.planned_start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : 'TBD';
-  const fromStop = trip?.trip_from_stop?.name || '?';
-  const toStop = trip?.trip_to_stop?.name || '?';
+  const fromStop = trip?.trip_from_stop?.name || '—';
+  const toStop = trip?.trip_to_stop?.name || '—';
+  const availableSeats = seatInfo?.available ?? null;
+  const totalSeats = seatInfo?.total ?? null;
+  const seatPct = totalSeats ? availableSeats / totalSeats : null;
+  const seatColor = seatPct === null ? C.textMuted : seatPct > 0.5 ? C.green : seatPct > 0.2 ? C.gold : C.red;
 
-  const totalSeats = seatInfo?.total ?? '?';
-  const availableSeats = seatInfo?.available ?? '?';
-  const seatsDisplay = seatInfo
-    ? `Total: ${totalSeats} seats | Available: ${availableSeats}`
-    : 'Checking availability...';
+  const borderColor = shimmer.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgba(201,168,76,0.4)', 'rgba(201,168,76,0.9)'],
+  });
 
   return (
-    <TouchableOpacity activeOpacity={1} onPressIn={animateIn} onPressOut={animateOut} onPress={onPress}>
-      <Animated.View
-        style={[
-          {
-            transform: [{ scale }],
-            marginBottom: 12,
-            borderRadius: 24,
-            backgroundColor: selected ? '#000' : '#fff',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.05,
-            shadowRadius: 4,
-            elevation: 2,
-          },
-          selected && {
-            borderWidth: 0,
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
-            elevation: 4,
-          },
-        ]}
-      >
-        <View className="p-4">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center flex-1">
-              <View
-                className="w-12 h-12 rounded-full items-center justify-center"
-                style={{ backgroundColor: selected ? '#fff' : '#f5f5f5' }}
-              >
-                <Ionicons name="bus-outline" size={24} color={selected ? '#000' : '#666'} />
+    <TouchableOpacity activeOpacity={1} onPressIn={pressIn} onPressOut={pressOut} onPress={onPress}>
+      <Animated.View style={{
+        transform: [{ scale }],
+        marginBottom: 10,
+      }}>
+        <Animated.View style={{
+          borderRadius: 20,
+          borderWidth: selected ? 1.5 : 1,
+          borderColor: selected ? borderColor : C.border,
+          backgroundColor: selected ? '#16151F' : C.surfaceUp,
+          overflow: 'hidden',
+        }}>
+          {/* Gold top accent line for selected */}
+          {selected && (
+            <LinearGradient
+              colors={[C.gold, 'transparent']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={{ height: 2, width: '100%' }}
+            />
+          )}
+          <View style={{ padding: 16 }}>
+            {/* Header row */}
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+              {/* Icon */}
+              <View style={{
+                width: 48, height: 48, borderRadius: 14,
+                backgroundColor: selected ? C.goldDim : C.surfaceHigh,
+                borderWidth: 1, borderColor: selected ? 'rgba(201,168,76,0.3)' : C.border,
+                alignItems: 'center', justifyContent: 'center', marginRight: 14,
+              }}>
+                <Ionicons name="bus" size={22} color={selected ? C.gold : C.textSecondary} />
               </View>
-              <View className="ml-3 flex-1">
-                <View className="flex-row items-center flex-wrap">
-                  <Text className={`font-bold text-base ${selected ? 'text-white' : 'text-black'}`}>
-                    {vehicleName}
-                  </Text>
-                  {hasAC && (
-                    <View className="ml-2 px-2 py-0.5 rounded-full bg-green-100">
-                      <Text className="text-green-700 text-xs font-bold">AC</Text>
+
+              {/* Info */}
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 6 }}>
+                  <Text style={[T.bodyLg, selected ? { color: C.textPrimary } : {}]}>{vehicleName}</Text>
+                  {hasAC && <GoldTag label="AC" />}
+                </View>
+                <Text style={[T.bodySm, { marginBottom: 2 }]}>{fromStop} → {toStop}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="time-outline" size={11} color={C.textMuted} />
+                    <Text style={[T.bodySm, { color: C.textMuted }]}>{startTime}</Text>
+                  </View>
+                  {seatInfo && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: seatColor }} />
+                      <Text style={[T.bodySm, { color: seatColor }]}>
+                        {availableSeats} seats left
+                      </Text>
                     </View>
                   )}
                 </View>
-                <Text className={`text-xs ${selected ? 'text-gray-300' : 'text-gray-500'} mt-0.5`}>
-                  {fromStop} → {toStop}
-                </Text>
-                <Text className={`text-xs ${selected ? 'text-gray-400' : 'text-gray-500'} mt-0.5`}>
-                  Starts at {startTime}
-                </Text>
-                <Text className={`text-xs ${selected ? 'text-gray-400' : 'text-gray-500'} mt-0.5`}>
-                  {seatsDisplay}
-                </Text>
+              </View>
+
+              {/* Action buttons */}
+              <View style={{ gap: 6 }}>
+                <TouchableOpacity
+                  onPress={(e) => { e.stopPropagation(); onViewStops(); }}
+                  style={{
+                    paddingHorizontal: 11, paddingVertical: 6, borderRadius: 10,
+                    backgroundColor: C.surfaceHigh, borderWidth: 1, borderColor: C.border,
+                  }}
+                >
+                  <Text style={[T.bodySm, { color: C.textPrimary, fontSize: 11 }]}>Stops</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={(e) => { e.stopPropagation(); onInfoPress(); }}
+                  style={{
+                    paddingHorizontal: 11, paddingVertical: 6, borderRadius: 10,
+                    backgroundColor: C.surfaceHigh, borderWidth: 1, borderColor: C.border,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Ionicons name="person-outline" size={14} color={C.textSecondary} />
+                </TouchableOpacity>
               </View>
             </View>
-            <View className="flex-row space-x-2">
-              <TouchableOpacity
-                onPress={(e) => { e.stopPropagation(); onViewStops(); }}
-                className="px-3 py-1 rounded-full bg-gray-100"
-              >
-                <Text className="text-black text-xs">Stops</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={(e) => { e.stopPropagation(); onInfoPress(); }}
-                className="px-3 py-1 rounded-full bg-gray-100"
-              >
-                <Ionicons name="information-circle-outline" size={20} color="#000" />
-              </TouchableOpacity>
-            </View>
+
+            {/* Seat capacity bar */}
+            {seatInfo && (
+              <View style={{ marginTop: 14 }}>
+                <View style={{ height: 3, backgroundColor: C.surfaceHigh, borderRadius: 2, overflow: 'hidden' }}>
+                  <View style={{
+                    height: '100%',
+                    width: `${Math.min((availableSeats / totalSeats) * 100, 100)}%`,
+                    backgroundColor: seatColor,
+                    borderRadius: 2,
+                  }} />
+                </View>
+                <Text style={[T.bodySm, { color: C.textMuted, fontSize: 10, marginTop: 4, textAlign: 'right' }]}>
+                  {availableSeats}/{totalSeats} available
+                </Text>
+              </View>
+            )}
           </View>
-        </View>
+        </Animated.View>
       </Animated.View>
     </TouchableOpacity>
   );
 };
 
-// ----- Trip Stops Modal (unchanged) -----
+// ─── TRIP STOP MODAL ────────────────────────────────────────────────────────────
 const TripStopModal = ({ visible, onClose, stops }) => {
   if (!stops) return null;
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <View className="flex-1 bg-black/50 justify-end">
-        <View className="bg-white rounded-t-3xl p-5 max-h-[80%]">
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-xl font-bold">Trip Stops</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#000" />
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' }}>
+        <View style={{
+          backgroundColor: C.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28,
+          borderTopWidth: 1, borderColor: C.borderStrong, maxHeight: '80%',
+        }}>
+          <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 4 }}>
+            <View style={{ width: 36, height: 4, backgroundColor: C.surfaceHigh, borderRadius: 2 }} />
+          </View>
+          <View style={{ paddingHorizontal: 24, paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={T.displayMd}>Route Stops</Text>
+            <TouchableOpacity onPress={onClose} style={{ padding: 6 }}>
+              <Ionicons name="close" size={22} color={C.textSecondary} />
             </TouchableOpacity>
           </View>
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}>
             {stops.map((stop, idx) => {
               const plannedTime = stop.planned_time_at_stop
                 ? new Date(stop.planned_time_at_stop).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 : '--:--';
-              const minutesFromStart = stop.minutes_from_trip_start ?? '?';
-              const isPickup = stop.boarding_allowed;
-              const isDropoff = stop.deboarding_allowed;
+              const isFirst = idx === 0;
+              const isLast = idx === stops.length - 1;
               return (
-                <View key={stop.route_stop_id ? `${stop.route_stop_id}-${idx}` : `stop-${idx}`} className="flex-row items-start py-3 border-b border-gray-100">
-                  <View className="w-6 h-6 rounded-full bg-gray-200 items-center justify-center mr-3">
-                    <Text className="text-black text-xs font-bold">{stop.sequence_no}</Text>
+                <View key={stop.route_stop_id || idx} style={{ flexDirection: 'row', alignItems: 'stretch' }}>
+                  {/* Timeline */}
+                  <View style={{ width: 32, alignItems: 'center' }}>
+                    <View style={{
+                      width: 12, height: 12, borderRadius: 6, marginTop: 18,
+                      backgroundColor: isFirst || isLast ? C.gold : C.surfaceHigh,
+                      borderWidth: isFirst || isLast ? 0 : 2,
+                      borderColor: C.borderStrong,
+                    }} />
+                    {!isLast && <View style={{ flex: 1, width: 2, backgroundColor: C.border, marginVertical: 2 }} />}
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-black font-medium">{stop.stop?.name}</Text>
-                    <Text className="text-gray-500 text-xs">
-                      {minutesFromStart} min from start • {plannedTime}
-                    </Text>
-                    <View className="flex-row mt-1">
-                      {isPickup && <Text className="text-green-600 text-xs mr-2">Pickup</Text>}
-                      {isDropoff && <Text className="text-blue-600 text-xs">Dropoff</Text>}
+                  {/* Content */}
+                  <View style={{ flex: 1, paddingVertical: 12, paddingLeft: 12, borderBottomWidth: isLast ? 0 : 1, borderColor: C.border }}>
+                    <Text style={T.bodyMd}>{stop.stop?.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                      <Text style={[T.bodySm, { color: C.textMuted }]}>{plannedTime}</Text>
+                      <Text style={[T.bodySm, { color: C.textMuted }]}>·</Text>
+                      <Text style={[T.bodySm, { color: C.textMuted }]}>{stop.minutes_from_trip_start ?? '?'} min</Text>
+                      {stop.boarding_allowed && (
+                        <View style={{ backgroundColor: C.greenDim, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
+                          <Text style={[T.bodySm, { color: C.green, fontSize: 10 }]}>Pickup</Text>
+                        </View>
+                      )}
+                      {stop.deboarding_allowed && (
+                        <View style={{ backgroundColor: C.blueDim, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
+                          <Text style={[T.bodySm, { color: C.blue, fontSize: 10 }]}>Dropoff</Text>
+                        </View>
+                      )}
                     </View>
                   </View>
                 </View>
@@ -225,55 +395,114 @@ const TripStopModal = ({ visible, onClose, stops }) => {
   );
 };
 
-// ----- Driver/Vehicle Info Modal (unchanged) -----
+// ─── DRIVER INFO MODAL ──────────────────────────────────────────────────────────
 const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
   if (!driverInfo) return null;
-  let rating = driverInfo.driver_average_rating;
-  const ratingNum = rating != null && !isNaN(parseFloat(rating)) ? parseFloat(rating) : null;
-  const hasRating = ratingNum !== null;
+  const ratingNum = parseFloat(driverInfo.driver_average_rating);
+  const hasRating = !isNaN(ratingNum);
   const ratingCount = driverInfo.driver_rating_count || 0;
+
+  const renderStars = (rating) => {
+    return [1, 2, 3, 4, 5].map(i => (
+      <Ionicons key={i} name={i <= Math.round(rating) ? 'star' : 'star-outline'} size={13} color={C.gold} style={{ marginRight: 2 }} />
+    ));
+  };
+
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <View className="flex-1 bg-black/90 justify-center items-center p-5">
-        <View className="bg-black rounded-3xl p-6 w-full border border-gray-800">
-          <Text className="text-2xl font-bold text-white mb-4">Driver & Vehicle</Text>
-          <View className="flex-row items-center mb-4">
-            <View className="w-12 h-12 rounded-full bg-gray-800 items-center justify-center mr-3">
-              <Ionicons name="person" size={24} color="#fff" />
-            </View>
-            <View>
-              <Text className="text-white font-semibold">{driverInfo.driver_name || 'N/A'}</Text>
-              <View className="flex-row items-center">
-                <Ionicons name="star" size={14} color="#fbbf24" />
-                <Text className="text-gray-400 text-xs ml-1">
-                  {hasRating 
-                    ? `${ratingNum.toFixed(1)} (${ratingCount} ratings)`
-                    : `New (${ratingCount} ratings)`}
-                </Text>
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+        <View style={{
+          backgroundColor: C.surface, borderRadius: 28, width: '100%',
+          borderWidth: 1, borderColor: C.borderStrong, overflow: 'hidden',
+        }}>
+          {/* Gold header stripe */}
+          <LinearGradient
+            colors={['rgba(201,168,76,0.25)', 'transparent']}
+            style={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 20 }}
+          >
+            <Text style={[T.headingSm, { marginBottom: 10 }]}>Your Driver</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <LinearGradient colors={[C.goldDim, 'rgba(201,168,76,0.05)']} style={{
+                width: 56, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
+                borderWidth: 1, borderColor: 'rgba(201,168,76,0.3)', marginRight: 16,
+              }}>
+                <Ionicons name="person" size={26} color={C.gold} />
+              </LinearGradient>
+              <View>
+                <Text style={T.displayMd}>{driverInfo.driver_name || 'N/A'}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                  {hasRating ? renderStars(ratingNum) : null}
+                  <Text style={[T.bodySm, { marginLeft: 6 }]}>
+                    {hasRating ? `${ratingNum.toFixed(1)} (${ratingCount})` : `New driver`}
+                  </Text>
+                </View>
               </View>
             </View>
+          </LinearGradient>
+
+          {/* Vehicle info */}
+          <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+            <GlassCard style={{ padding: 16 }}>
+              <Text style={[T.headingSm, { marginBottom: 12 }]}>Vehicle</Text>
+              {[
+                { label: 'Model', value: driverInfo.vehicle_name || 'Bus' },
+                { label: 'Details', value: `${driverInfo.vehicle_model || '—'} · ${driverInfo.vehicle_color || '—'}` },
+                { label: 'Reg. No.', value: driverInfo.vehicle_registration_number || 'N/A' },
+                { label: 'Capacity', value: `${driverInfo.vehicle_total_seat || '?'} seats` },
+              ].map((item, i) => (
+                <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: i < 3 ? 1 : 0, borderColor: C.border }}>
+                  <Text style={[T.bodySm, { color: C.textMuted }]}>{item.label}</Text>
+                  <Text style={T.bodyMd}>{item.value}</Text>
+                </View>
+              ))}
+            </GlassCard>
+
+            <TouchableOpacity onPress={onClose} style={{ marginTop: 20 }}>
+              <LinearGradient colors={[C.gold, C.goldLight]} style={{ borderRadius: 16, paddingVertical: 15, alignItems: 'center' }}>
+                <Text style={{ color: '#000', fontWeight: '700', fontSize: 15 }}>Done</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
-          <View className="bg-gray-900 rounded-xl p-3 mb-4">
-            <Text className="text-white font-semibold mb-1">Vehicle</Text>
-            <Text className="text-gray-300">{driverInfo.vehicle_name || 'Bus'}</Text>
-            <Text className="text-gray-400 text-sm">{driverInfo.vehicle_model} ({driverInfo.vehicle_color})</Text>
-            <Text className="text-gray-400 text-sm">Reg: {driverInfo.vehicle_registration_number || 'N/A'}</Text>
-            <Text className="text-gray-400 text-sm">Total seats: {driverInfo.vehicle_total_seat || '?'}</Text>
-          </View>
-          <TouchableOpacity onPress={onClose} className="bg-white py-3 rounded-full">
-            <Text className="text-black text-center font-semibold">Close</Text>
-          </TouchableOpacity>
         </View>
       </View>
     </Modal>
   );
 };
+
+// ─── SKELETON ──────────────────────────────────────────────────────────────────
+const Skeleton = ({ width, height, borderRadius = 8 }) => {
+  const opacity = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.9, duration: 900, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.4, duration: 900, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+  return <Animated.View style={{ width, height, borderRadius, backgroundColor: C.surfaceHigh, opacity }} />;
+};
+
+// ─── MAIN SCREEN ───────────────────────────────────────────────────────────────
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const firstName = user?.email?.split('@')[0] || 'User';
+  const [userName, setUserName] = useState('');
+  const [profileLoading, setProfileLoading] = useState(true);
 
-  // Data states
+  useEffect(() => {
+    (async () => {
+      try {
+        const profile = await fetchProfile();
+        setUserName(profile?.full_name || user?.email?.split('@')[0] || 'User');
+      } catch {
+        setUserName(user?.email?.split('@')[0] || 'User');
+      } finally {
+        setProfileLoading(false);
+      }
+    })();
+  }, [user]);
+
   const [routesData, setRoutesData] = useState([]);
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [stops, setStops] = useState([]);
@@ -291,53 +520,51 @@ export default function HomeScreen({ navigation }) {
   const [legAvailability, setLegAvailability] = useState({});
   const [loadingSeats, setLoadingSeats] = useState(false);
   const [sheetVisible, setSheetVisible] = useState(true);
+
   const translateY = useRef(new Animated.Value(0)).current;
 
-  // Pan responder (unchanged)
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) translateY.setValue(gestureState.dy);
-        else if (gestureState.dy < 0 && translateY.__getValue() > -(BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT))
-          translateY.setValue(gestureState.dy);
+      onPanResponderMove: (_, g) => {
+        if (g.dy > 0) translateY.setValue(g.dy);
+        else if (g.dy < 0 && translateY.__getValue() > -(BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT))
+          translateY.setValue(g.dy);
       },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 100) setSheetVisible(false);
-        else if (gestureState.dy < -50) {
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > 100) setSheetVisible(false);
+        else if (g.dy < -50)
           Animated.spring(translateY, { toValue: -(BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT), useNativeDriver: true }).start();
-        } else {
-          if (translateY.__getValue() < -(BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT) / 2)
-            Animated.spring(translateY, { toValue: -(BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT), useNativeDriver: true }).start();
-          else
-            Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
+        else {
+          const snap = translateY.__getValue() < -(BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT) / 2
+            ? -(BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT) : 0;
+          Animated.spring(translateY, { toValue: snap, useNativeDriver: true }).start();
         }
       },
     })
   ).current;
 
   useEffect(() => {
-    if (sheetVisible) {
-      Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
-    } else {
-      Animated.spring(translateY, { toValue: BOTTOM_SHEET_MAX_HEIGHT, useNativeDriver: true }).start();
-    }
+    Animated.spring(translateY, {
+      toValue: sheetVisible ? 0 : BOTTOM_SHEET_MAX_HEIGHT,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11,
+    }).start();
   }, [sheetVisible]);
 
-  // Load routes (unchanged)
   useEffect(() => {
     (async () => {
       try {
         const { items } = await listRoutes(true);
         setRoutesData(items || []);
         if (items?.length) setSelectedRoute(items[0]);
-      } catch (err) {
+      } catch {
         Alert.alert('Error', 'Unable to load routes');
       }
     })();
   }, []);
 
-  // Load stops & trips for selected route (unchanged)
   useEffect(() => {
     if (!selectedRoute) return;
     (async () => {
@@ -356,86 +583,68 @@ export default function HomeScreen({ navigation }) {
     })();
   }, [selectedRoute]);
 
-  // Draw route on map (unchanged)
   useEffect(() => {
     if (pickupStopId && dropoffStopId && stops.length) {
-      const pickupStop = stops.find(s => s.stop?.id === pickupStopId);
-      const dropoffStop = stops.find(s => s.stop?.id === dropoffStopId);
-      if (pickupStop && dropoffStop) {
+      const pk = stops.find(s => s.stop?.id === pickupStopId);
+      const dk = stops.find(s => s.stop?.id === dropoffStopId);
+      if (pk && dk) {
         (async () => {
           try {
             const coords = await getRouteBetweenStops(
-              parseFloat(pickupStop.stop.lat),
-              parseFloat(pickupStop.stop.lng),
-              parseFloat(dropoffStop.stop.lat),
-              parseFloat(dropoffStop.stop.lng)
+              parseFloat(pk.stop.lat), parseFloat(pk.stop.lng),
+              parseFloat(dk.stop.lat), parseFloat(dk.stop.lng)
             );
             setRouteCoordinates(coords);
-          } catch (err) {
-            setRouteCoordinates([]);
-          }
+          } catch { setRouteCoordinates([]); }
         })();
       }
-    } else {
-      setRouteCoordinates([]);
-    }
+    } else setRouteCoordinates([]);
   }, [pickupStopId, dropoffStopId, stops]);
 
-  // Fetch leg availability (unchanged)
   useEffect(() => {
     if (!pickupStopId || !dropoffStopId || trips.length === 0 || !selectedRoute) {
       setLegAvailability({});
       return;
     }
-    const fetchAllLegAvailability = async () => {
+    (async () => {
       setLoadingSeats(true);
       const results = {};
       for (const trip of trips) {
         try {
-          const seatInfo = await getLegAvailableSeats(trip.id, selectedRoute.id, pickupStopId, dropoffStopId);
-          results[trip.id] = { available: seatInfo.available_seats, total: seatInfo.seat_capacity };
-        } catch (err) {
-          results[trip.id] = null;
-        }
+          const s = await getLegAvailableSeats(trip.id, selectedRoute.id, pickupStopId, dropoffStopId);
+          results[trip.id] = { available: s.available_seats, total: s.seat_capacity };
+        } catch { results[trip.id] = null; }
       }
       setLegAvailability(results);
       setLoadingSeats(false);
-    };
-    fetchAllLegAvailability();
+    })();
   }, [pickupStopId, dropoffStopId, trips, selectedRoute]);
 
-  // Fetch fare preview (unchanged, but now fare contains has_ac)
   useEffect(() => {
     if (selectedTrip && pickupStopId && dropoffStopId && selectedRoute) {
       (async () => {
         try {
-          const fareData = await previewFare({ route_id: selectedRoute.id, pickup_stop_id: pickupStopId, dropoff_stop_id: dropoffStopId });
-          setFare(fareData);
-        } catch (err) {
-          setFare(null);
-        }
+          const f = await previewFare({ route_id: selectedRoute.id, pickup_stop_id: pickupStopId, dropoff_stop_id: dropoffStopId });
+          setFare(f);
+        } catch { setFare(null); }
       })();
-    } else {
-      setFare(null);
-    }
+    } else setFare(null);
   }, [selectedTrip, pickupStopId, dropoffStopId, selectedRoute]);
 
   const handleConfirm = async () => {
     if (!selectedTrip || !pickupStopId || !dropoffStopId || !fare) {
-      Alert.alert('Missing Info', 'Please select pickup, dropoff and a ride');
+      Alert.alert('Incomplete', 'Select pickup, dropoff, and a ride first');
       return;
     }
     try {
-      const seatInfo = await getLegAvailableSeats(selectedTrip.id, selectedRoute.id, pickupStopId, dropoffStopId);
-      if (!seatInfo.trip_bookable || seatInfo.available_seats === 0) {
-        Alert.alert('No seats available', 'Sorry, no seats are available for this trip segment. Please choose another ride.');
+      const s = await getLegAvailableSeats(selectedTrip.id, selectedRoute.id, pickupStopId, dropoffStopId);
+      if (!s.trip_bookable || s.available_seats === 0) {
+        Alert.alert('No seats', 'No seats available for this leg. Try another ride.');
         return;
       }
-      if (seatInfo.available_seats < 3) {
-        Alert.alert('Limited seats', `Only ${seatInfo.available_seats} seat(s) left. Be quick!`);
-      }
-    } catch (err) {
-      Alert.alert('Error', 'Could not verify seat availability. Please try again.');
+      if (s.available_seats < 3) Alert.alert('Hurry!', `Only ${s.available_seats} seat(s) left.`);
+    } catch {
+      Alert.alert('Error', 'Could not verify availability. Try again.');
       return;
     }
     navigation.navigate('SeatSelection', {
@@ -452,170 +661,211 @@ export default function HomeScreen({ navigation }) {
       const info = await getDriverVehicleInfo(tripId);
       setCurrentDriverInfo(info);
       setDriverModalVisible(true);
-    } catch (err) {
-      Alert.alert('Error', 'Could not fetch driver info');
-    }
+    } catch { Alert.alert('Error', 'Could not fetch driver info'); }
   };
 
+  const canBook = selectedTrip && pickupStopId && dropoffStopId && fare;
+
   return (
-    <View className="flex-1 bg-black">
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+      {/* MAP */}
       <View style={{ flex: 1, paddingTop: insets.top }}>
         <OSMMap routeCoordinates={routeCoordinates} />
       </View>
 
-      <Animated.View
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: BOTTOM_SHEET_MAX_HEIGHT,
-          backgroundColor: '#fff',
-          borderTopLeftRadius: 32,
-          borderTopRightRadius: 32,
-          transform: [{ translateY }],
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.1,
-          shadowRadius: 12,
-          elevation: 10,
-        }}
-      >
-        <View {...panResponder.panHandlers} className="items-center pt-4 pb-2">
-          <View className="w-12 h-1.5 bg-gray-300 rounded-full" />
+      {/* BOTTOM SHEET */}
+      <Animated.View style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        height: BOTTOM_SHEET_MAX_HEIGHT,
+        backgroundColor: C.surface,
+        borderTopLeftRadius: 32, borderTopRightRadius: 32,
+        borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1,
+        borderColor: C.borderStrong,
+        transform: [{ translateY }],
+        shadowColor: C.gold,
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 20,
+        elevation: 20,
+      }}>
+        {/* Drag handle area */}
+        <View {...panResponder.panHandlers} style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 6 }}>
+          <View style={{ width: 36, height: 4, backgroundColor: C.surfaceHigh, borderRadius: 2 }} />
         </View>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 50 }}
         >
-
-          <View className="flex-row justify-between items-center mb-6">
+          {/* Welcome Header */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, marginTop: 4 }}>
             <View>
-              <Text className="text-gray-500 text-sm">Welcome back,</Text>
-              <Text className="text-3xl font-bold text-black">{firstName}</Text>
+              <Text style={[T.headingSm, { marginBottom: 6 }]}>Good morning</Text>
+              {profileLoading
+                ? <Skeleton width={140} height={34} borderRadius={10} />
+                : <Text style={T.displayLg}>{userName}</Text>
+              }
             </View>
-            <View className="w-12 h-12 rounded-full bg-gray-200 items-center justify-center">
-              <Ionicons name="person-circle-outline" size={32} color="#000" />
-            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{
+              width: 46, height: 46, borderRadius: 14,
+              backgroundColor: C.surfaceHigh, borderWidth: 1, borderColor: C.border,
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Ionicons name="person-outline" size={20} color={C.textSecondary} />
+            </TouchableOpacity>
           </View>
 
-          <View className="mb-4">
-            <Text className="text-black font-semibold mb-2 text-sm uppercase tracking-wide">Select Route</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-              {routesData.map((route, idx) => (
+          {/* Route Selector */}
+          <Text style={[T.headingSm, { marginBottom: 10 }]}>Route</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }} contentContainerStyle={{ gap: 8 }}>
+            {routesData.map((route, idx) => {
+              const sel = selectedRoute?.id === route.id;
+              return (
                 <TouchableOpacity
-                  key={route.id ? `${route.id}-${idx}` : `route-${idx}`}
+                  key={route.id || idx}
                   onPress={() => setSelectedRoute(route)}
-                  className={`px-4 py-2 rounded-full mr-2 flex-row items-center ${
-                    selectedRoute?.id === route.id ? 'bg-black' : 'bg-gray-100'
-                  }`}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center',
+                    paddingHorizontal: 16, paddingVertical: 10,
+                    borderRadius: 14,
+                    backgroundColor: sel ? C.gold : C.surfaceUp,
+                    borderWidth: 1, borderColor: sel ? C.goldLight : C.border,
+                    gap: 6,
+                  }}
                 >
-                  <Text className={selectedRoute?.id === route.id ? 'text-white font-medium' : 'text-black'}>
+                  <Text style={[T.bodyMd, { color: sel ? '#000' : C.textPrimary, fontWeight: sel ? '700' : '500' }]}>
                     {route.name}
                   </Text>
-                  {route.has_ac && (
-                    <View className="ml-2 px-1.5 py-0.5 rounded-full bg-green-100">
-                      <Text className="text-green-700 text-[10px] font-bold">AC</Text>
+                  {route.has_ac && !sel && <GoldTag label="AC" />}
+                  {route.has_ac && sel && (
+                    <View style={{ backgroundColor: 'rgba(0,0,0,0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#000' }}>AC</Text>
                     </View>
                   )}
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+              );
+            })}
+          </ScrollView>
 
-          <StopSelector
-            stops={stops}
-            selectedId={pickupStopId}
-            onSelect={setPickupStopId}
-            label="Pickup location"
-            icon="navigate-circle-outline"
-          />
-          <StopSelector
-            stops={stops}
-            selectedId={dropoffStopId}
-            onSelect={setDropoffStopId}
-            label="Dropoff location"
-            icon="location-outline"
-          />
+          {/* Stop Selectors */}
+          <Text style={[T.headingSm, { marginBottom: 10 }]}>Journey</Text>
+          <StopSelector stops={stops} selectedId={pickupStopId} onSelect={setPickupStopId} label="Pickup stop" icon="navigate-circle" accent="gold" />
+          <StopSelector stops={stops} selectedId={dropoffStopId} onSelect={setDropoffStopId} label="Dropoff stop" icon="location" accent="blue" />
 
+          {/* Fare Card */}
           {fare && (
-            <View className="bg-gray-50 rounded-2xl p-4 mt-2 flex-row justify-between items-center">
+            <LinearGradient
+              colors={['rgba(201,168,76,0.15)', 'rgba(201,168,76,0.05)']}
+              style={{
+                borderRadius: 18, padding: 16, marginTop: 4, marginBottom: 8,
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                borderWidth: 1, borderColor: 'rgba(201,168,76,0.25)',
+              }}
+            >
               <View>
-                <Text className="text-black font-bold text-lg">₹{fare.amount}</Text>
-                <Text className="text-gray-500 text-xs">Estimated fare</Text>
+                <Text style={[T.headingSm, { marginBottom: 4 }]}>Estimated Fare</Text>
+                <Text style={{ fontSize: 30, fontWeight: '800', color: C.gold, letterSpacing: -1 }}>
+                  ₹{fare.amount}
+                </Text>
               </View>
-              <View className="flex-row items-center">
-                {fare.has_ac && (
-                  <View className="mr-2 px-2 py-0.5 rounded-full bg-green-100">
-                    <Text className="text-green-700 text-xs font-bold">AC</Text>
-                  </View>
-                )}
-                <View className="bg-white px-3 py-1 rounded-full shadow-sm">
-                  <Text className="text-black text-xs">{fare.route_name}</Text>
-                </View>
+              <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                {fare.has_ac && <GoldTag label="AC" />}
+                <Text style={[T.bodySm, { color: C.textMuted }]}>{fare.route_name}</Text>
               </View>
-            </View>
+            </LinearGradient>
           )}
 
-          <Text className="text-black text-lg font-semibold mt-6 mb-3">Available Buses</Text>
+          {/* Available Buses Section */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, marginBottom: 12 }}>
+            <Text style={[T.headingSm]}>Available Buses</Text>
+            {loadingSeats && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <ActivityIndicator size="small" color={C.gold} />
+                <Text style={[T.bodySm, { color: C.textMuted, fontSize: 11 }]}>Checking seats</Text>
+              </View>
+            )}
+          </View>
+
           {loading && trips.length === 0 ? (
-            <ActivityIndicator size="large" color="#000" />
-          ) : trips.length === 0 ? (
-            <View className="items-center py-8">
-              <Ionicons name="bus-outline" size={48} color="#ccc" />
-              <Text className="text-gray-500 mt-2">No buses available for this route</Text>
+            <View style={{ gap: 10 }}>
+              {[1, 2].map(i => <Skeleton key={i} width="100%" height={100} borderRadius={20} />)}
             </View>
+          ) : trips.length === 0 ? (
+            <GlassCard style={{ padding: 32, alignItems: 'center' }}>
+              <Ionicons name="bus-outline" size={44} color={C.textMuted} />
+              <Text style={[T.bodyMd, { color: C.textMuted, marginTop: 12 }]}>No buses on this route</Text>
+            </GlassCard>
           ) : (
             trips.map((trip, idx) => (
               <RideCard
-                key={trip.id ? `${trip.id}-${idx}` : `trip-${idx}`}
+                key={trip.id || idx}
                 trip={trip}
                 selected={selectedTrip?.id === trip.id}
                 onPress={() => setSelectedTrip(trip)}
-                onViewStops={() => {
-                  setSelectedTripStops(trip.stops || []);
-                  setTripStopModalVisible(true);
-                }}
+                onViewStops={() => { setSelectedTripStops(trip.stops || []); setTripStopModalVisible(true); }}
                 onInfoPress={() => showDriverInfo(trip.id)}
                 seatInfo={legAvailability[trip.id]}
               />
             ))
           )}
-          {loadingSeats && <ActivityIndicator size="small" color="#000" className="mt-2" />}
 
-          <AnimatedButton
-            title={`Select Seats & Pay ₹${fare?.amount || '0'}`}
+          {/* CTA Button */}
+          <TouchableOpacity
             onPress={handleConfirm}
-            disabled={!selectedTrip || !pickupStopId || !dropoffStopId || !fare}
-            style={{ marginTop: 20 }}
-          />
-          <Text className="text-center text-gray-500 text-xs mt-4">
-            Scheduled rides available
+            disabled={!canBook}
+            style={{ marginTop: 24 }}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={canBook ? [C.gold, C.goldLight] : [C.surfaceHigh, C.surfaceHigh]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={{
+                borderRadius: 18, paddingVertical: 17,
+                alignItems: 'center', justifyContent: 'center',
+                flexDirection: 'row', gap: 8,
+                borderWidth: canBook ? 0 : 1, borderColor: C.border,
+              }}
+            >
+              <Ionicons
+                name="ticket-outline"
+                size={18}
+                color={canBook ? '#000' : C.textMuted}
+              />
+              <Text style={{
+                fontSize: 16, fontWeight: '700',
+                color: canBook ? '#000' : C.textMuted,
+                letterSpacing: 0.2,
+              }}>
+                {fare ? `Book Seats · ₹${fare.amount}` : 'Select Journey Details'}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <Text style={[T.bodySm, { color: C.textMuted, textAlign: 'center', marginTop: 12 }]}>
+            Scheduled rides · Confirmed seats
           </Text>
         </ScrollView>
       </Animated.View>
 
-      <TripStopModal
-        visible={tripStopModalVisible}
-        onClose={() => setTripStopModalVisible(false)}
-        stops={selectedTripStops}
-      />
-
-      <DriverInfoModal
-        visible={driverModalVisible}
-        onClose={() => setDriverModalVisible(false)}
-        driverInfo={currentDriverInfo}
-      />
-
+      {/* Floating restore button */}
       {!sheetVisible && (
         <TouchableOpacity
-          className="absolute bottom-6 right-6 bg-white rounded-full p-3 shadow-lg"
           onPress={() => setSheetVisible(true)}
+          style={{
+            position: 'absolute', bottom: insets.bottom + 24, right: 20,
+            width: 52, height: 52, borderRadius: 16,
+            backgroundColor: C.surface, borderWidth: 1, borderColor: C.borderStrong,
+            alignItems: 'center', justifyContent: 'center',
+            shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8,
+            elevation: 8,
+          }}
         >
-          <Ionicons name="chevron-up" size={24} color="#000" />
+          <Ionicons name="chevron-up" size={22} color={C.gold} />
         </TouchableOpacity>
       )}
+
+      <TripStopModal visible={tripStopModalVisible} onClose={() => setTripStopModalVisible(false)} stops={selectedTripStops} />
+      <DriverInfoModal visible={driverModalVisible} onClose={() => setDriverModalVisible(false)} driverInfo={currentDriverInfo} />
     </View>
   );
 }
