@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import Header from '../components/Header';
 import AnimatedButton from '../components/AnimatedButton';
 import { createSupportTicket } from '../services/supportApi';
+import { C, T } from '../styles/design';
 
 export default function CreateTicketScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -43,7 +44,7 @@ export default function CreateTicketScreen({ navigation }) {
   const removeAttachment = () => setAttachment(null);
 
   const handleSubmit = async () => {
-    if (!subject.trim()) { 
+    if (!subject.trim()) {
       Alert.alert('Error', 'Please enter a subject');
       return;
     }
@@ -66,50 +67,90 @@ export default function CreateTicketScreen({ navigation }) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-black"
+      style={{ flex: 1, backgroundColor: C.bg }}
     >
-      <View className="flex-1" style={{ paddingTop: insets.top }}>
-        <Header title="New Support Ticket" />
-        <ScrollView className="flex-1 px-5 pt-5">
-          <Text className="text-white font-medium mb-2">Subject</Text>
+      <View style={{ flex: 1, paddingTop: insets.top }}>
+        <Header title="New Support Ticket" showBack />
+        <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
+          <Text style={[T.headingSm, { marginBottom: 8 }]}>Subject</Text>
           <TextInput
-            className="bg-gray-900 rounded-xl p-4 text-white mb-4"
+            style={{
+              backgroundColor: C.surfaceUp,
+              borderRadius: 16,
+              padding: 16,
+              color: C.textPrimary,
+              marginBottom: 16,
+              borderWidth: 1,
+              borderColor: C.border,
+            }}
             placeholder="Brief summary of your issue"
-            placeholderTextColor="#666"
+            placeholderTextColor={C.textMuted}
             value={subject}
             onChangeText={setSubject}
           />
 
-          <Text className="text-white font-medium mb-2">Description</Text>
+          <Text style={[T.headingSm, { marginBottom: 8 }]}>Description</Text>
           <TextInput
-            className="bg-gray-900 rounded-xl p-4 text-white mb-4"
+            style={{
+              backgroundColor: C.surfaceUp,
+              borderRadius: 16,
+              padding: 16,
+              color: C.textPrimary,
+              marginBottom: 16,
+              borderWidth: 1,
+              borderColor: C.border,
+              minHeight: 120,
+              textAlignVertical: 'top',
+            }}
             placeholder="Please provide detailed information"
-            placeholderTextColor="#666"
+            placeholderTextColor={C.textMuted}
             value={description}
             onChangeText={setDescription}
             multiline
             numberOfLines={5}
-            textAlignVertical="top"
           />
 
-          <Text className="text-white font-medium mb-2">Attachment (optional)</Text>
+          <Text style={[T.headingSm, { marginBottom: 8 }]}>Attachment (optional)</Text>
           {attachment ? (
-            <View className="bg-gray-900 rounded-xl p-3 mb-4 flex-row items-center justify-between">
-              <View className="flex-row items-center">
-                <Ionicons name="image-outline" size={20} color="#aaa" />
-                <Text className="text-gray-400 ml-2">File selected</Text>
+            <View
+              style={{
+                backgroundColor: C.surfaceUp,
+                borderRadius: 16,
+                padding: 12,
+                marginBottom: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                borderWidth: 1,
+                borderColor: C.border,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="image-outline" size={20} color={C.textSecondary} />
+                <Text style={[T.bodySm, { marginLeft: 8, color: C.textSecondary }]}>File selected</Text>
               </View>
               <TouchableOpacity onPress={removeAttachment}>
-                <Ionicons name="close-circle" size={22} color="#ef4444" />
+                <Ionicons name="close-circle" size={22} color={C.red} />
               </TouchableOpacity>
             </View>
           ) : (
             <TouchableOpacity
               onPress={pickImage}
-              className="bg-gray-900 rounded-xl p-4 mb-4 flex-row items-center justify-center border border-dashed border-gray-700"
+              style={{
+                backgroundColor: C.surfaceUp,
+                borderRadius: 16,
+                padding: 16,
+                marginBottom: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: C.border,
+                borderStyle: 'dashed',
+              }}
             >
-              <Ionicons name="cloud-upload-outline" size={24} color="#aaa" />
-              <Text className="text-gray-400 ml-2">Upload image (JPG/PNG)</Text>
+              <Ionicons name="cloud-upload-outline" size={24} color={C.textSecondary} />
+              <Text style={[T.bodySm, { marginLeft: 8, color: C.textSecondary }]}>Upload image (JPG/PNG)</Text>
             </TouchableOpacity>
           )}
 
@@ -118,6 +159,7 @@ export default function CreateTicketScreen({ navigation }) {
             onPress={handleSubmit}
             disabled={loading}
             style={{ marginBottom: 40 }}
+            buttonColor="gold"
           />
         </ScrollView>
       </View>

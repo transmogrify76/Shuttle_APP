@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, FlatList } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '../components/Header';
 import RouteCard from '../components/RouteCard';
-import { listRoutes } from '../services/routeApi'; // use real API
+import { listRoutes } from '../services/routeApi';
+import { C } from '../styles/design';
 
 export default function SelectRouteScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [routes, setRoutes] = useState([]);
+
   useEffect(() => {
-    // Fetch routes from API instead of dummy data
     listRoutes(true).then(({ items }) => setRoutes(items)).catch(console.error);
   }, []);
 
@@ -16,13 +19,13 @@ export default function SelectRouteScreen({ navigation }) {
   };
 
   return (
-    <View className="flex-1 bg-black">
-      <Header title="Select Route" />
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
+      <Header title="Select Route" showBack />
       <FlatList
         data={routes}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <RouteCard route={item} onSelect={handleSelect} />}
-        contentContainerClassName="py-4"
+        contentContainerStyle={{ paddingVertical: 16 }}
       />
     </View>
   );

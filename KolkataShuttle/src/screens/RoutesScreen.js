@@ -11,8 +11,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import { listRoutes, getRouteDetails } from '../services/routeApi';
+import { C, T } from '../styles/design';
 
 export default function RoutesScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -54,44 +56,43 @@ export default function RoutesScreen({ navigation }) {
   };
 
   const renderRouteItem = ({ item }) => (
-    <TouchableOpacity
-      onPress={() => handleRoutePress(item)}
-      className="bg-gray-900 rounded-2xl p-4 mb-3 mx-4 border border-gray-800"
-    >
-      <View className="flex-row justify-between items-center mb-2">
-        <Text className="text-white font-bold text-lg flex-1">{item.name}</Text>
-        <View className="flex-row items-center">
-          {item.is_active ? (
-            <View className="bg-green-500/20 px-2 py-1 rounded-full">
-              <Text className="text-green-400 text-xs">Active</Text>
-            </View>
-          ) : (
-            <View className="bg-red-500/20 px-2 py-1 rounded-full">
-              <Text className="text-red-400 text-xs">Inactive</Text>
-            </View>
-          )}
-          <Ionicons name="chevron-forward" size={20} color="#666" className="ml-2" />
+    <TouchableOpacity onPress={() => handleRoutePress(item)} style={{ marginHorizontal: 16, marginBottom: 12 }}>
+      <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 20, padding: 16, borderWidth: 1, borderColor: C.border }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <Text style={[T.bodyLg, { flex: 1 }]}>{item.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {item.is_active ? (
+              <View style={{ backgroundColor: C.greenDim, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                <Text style={{ color: C.green, fontSize: 10, fontWeight: 'bold' }}>Active</Text>
+              </View>
+            ) : (
+              <View style={{ backgroundColor: C.redDim, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                <Text style={{ color: C.red, fontSize: 10, fontWeight: 'bold' }}>Inactive</Text>
+              </View>
+            )}
+            <Ionicons name="chevron-forward" size={18} color={C.textMuted} style={{ marginLeft: 8 }} />
+          </View>
         </View>
-      </View>
-      <Text className="text-gray-400 text-sm">Code: {item.code || 'N/A'}</Text>
+        <Text style={[T.bodySm, { color: C.textMuted }]}>Code: {item.code || 'N/A'}</Text>
+      </LinearGradient>
     </TouchableOpacity>
   );
 
   if (loading) {
     return (
-      <View className="flex-1 bg-black justify-center items-center">
-        <ActivityIndicator size="large" color="#fff" />
+      <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={C.gold} />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
       <Header title="All Routes" />
       {routes.length === 0 ? (
-        <View className="flex-1 justify-center items-center">
-          <Ionicons name="map-outline" size={60} color="#444" />
-          <Text className="text-gray-500 text-base mt-3">No routes available</Text>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Ionicons name="map-outline" size={60} color={C.textMuted} />
+          <Text style={[T.bodyMd, { marginTop: 12 }]}>No routes available</Text>
         </View>
       ) : (
         <FlatList
@@ -104,43 +105,45 @@ export default function RoutesScreen({ navigation }) {
 
       {/* Route Detail Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
-        <View className="flex-1 bg-black/90">
-          <View className="flex-1 mt-20 bg-black rounded-t-3xl">
-            <View className="flex-row justify-between items-center p-5 border-b border-gray-800">
-              <Text className="text-white text-2xl font-bold">Route Details</Text>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)' }}>
+          <View style={{ flex: 1, marginTop: 40, backgroundColor: C.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: C.border }}>
+              <Text style={T.displayMd}>Route Details</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={28} color="#fff" />
+                <Ionicons name="close" size={24} color={C.textPrimary} />
               </TouchableOpacity>
             </View>
             {detailLoading ? (
-              <View className="flex-1 justify-center items-center">
-                <ActivityIndicator size="large" color="#fff" />
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={C.gold} />
               </View>
             ) : (
-              <ScrollView className="flex-1 p-5">
-                <Text className="text-white text-xl font-bold mb-2">{routeDetail?.name}</Text>
-                <Text className="text-gray-400 mb-4">Code: {routeDetail?.code}</Text>
-
-                <Text className="text-white text-lg font-semibold mb-3">Stops</Text>
+              <ScrollView style={{ flex: 1, padding: 20 }}>
+                <Text style={[T.bodyLg, { marginBottom: 4 }]}>{routeDetail?.name}</Text>
+                <Text style={[T.bodySm, { color: C.textMuted, marginBottom: 16 }]}>Code: {routeDetail?.code}</Text>
+                <Text style={[T.headingSm, { marginBottom: 12 }]}>Stops</Text>
                 {routeDetail?.stops?.map((stop, idx) => (
-                  <View key={stop.route_stop_id} className="flex-row items-start mb-3">
-                    <View className="w-6 h-6 rounded-full bg-gray-800 items-center justify-center mr-3">
-                      <Text className="text-white text-xs font-bold">{stop.sequence_no}</Text>
+                  <View key={stop.route_stop_id} style={{ flexDirection: 'row', marginBottom: 16 }}>
+                    <View style={{ width: 32, alignItems: 'center' }}>
+                      <LinearGradient colors={[C.goldDim, 'rgba(201,168,76,0.05)']} style={{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ fontSize: 12, fontWeight: 'bold', color: C.gold }}>{stop.sequence_no}</Text>
+                      </LinearGradient>
+                      {idx < routeDetail.stops.length - 1 && <View style={{ flex: 1, width: 2, backgroundColor: C.border, marginVertical: 4 }} />}
                     </View>
-                    <View className="flex-1">
-                      <Text className="text-white font-medium">{stop.stop.name}</Text>
-                      <Text className="text-gray-400 text-xs">
+                    <View style={{ flex: 1 }}>
+                      <Text style={T.bodyMd}>{stop.stop.name}</Text>
+                      <Text style={[T.bodySm, { color: C.textMuted, marginBottom: 6 }]}>
                         Lat: {stop.stop.lat}, Lng: {stop.stop.lng}
                       </Text>
-                      <View className="flex-row mt-1">
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
                         {stop.boarding_allowed && (
-                          <View className="bg-green-500/20 px-2 py-0.5 rounded-full mr-2">
-                            <Text className="text-green-400 text-xs">Pickup</Text>
+                          <View style={{ backgroundColor: C.greenDim, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                            <Text style={{ color: C.green, fontSize: 10, fontWeight: 'bold' }}>Pickup</Text>
                           </View>
                         )}
                         {stop.deboarding_allowed && (
-                          <View className="bg-blue-500/20 px-2 py-0.5 rounded-full">
-                            <Text className="text-blue-400 text-xs">Dropoff</Text>
+                          <View style={{ backgroundColor: C.blueDim, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                            <Text style={{ color: C.blue, fontSize: 10, fontWeight: 'bold' }}>Dropoff</Text>
                           </View>
                         )}
                       </View>

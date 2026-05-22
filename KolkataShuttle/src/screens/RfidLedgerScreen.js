@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import { getRfidLedger } from '../services/rfidApi';
+import { C, T } from '../styles/design';
 
 export default function RfidLedgerScreen() {
   const insets = useSafeAreaInsets();
@@ -36,33 +38,33 @@ export default function RfidLedgerScreen() {
   useEffect(() => { loadLedger(); }, []);
 
   const renderItem = ({ item }) => (
-    <View className="bg-gray-900 rounded-xl p-4 mb-3 border border-gray-800">
-      <View className="flex-row justify-between items-start mb-2">
-        <Text className="text-white font-bold capitalize">{item.entry_type.replace('_', ' ')}</Text>
-        <Text className="text-gray-400 text-xs">{new Date(item.created_at).toLocaleString()}</Text>
+    <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: C.border }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <Text style={[T.bodyMd, { fontWeight: 'bold', textTransform: 'capitalize' }]}>{item.entry_type.replace('_', ' ')}</Text>
+        <Text style={[T.bodySm, { color: C.textMuted }]}>{new Date(item.created_at).toLocaleString()}</Text>
       </View>
-      <View className="flex-row justify-between">
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
         {item.amount_delta !== '0.00' && (
-          <Text className={item.amount_delta > 0 ? 'text-green-500' : 'text-red-500'}>
-            {item.amount_delta > 0 ? `+₹${item.amount_delta}` : `-₹${Math.abs(item.amount_delta)}`}
+          <Text style={{ color: parseFloat(item.amount_delta) > 0 ? C.green : C.red, fontWeight: '500' }}>
+            {parseFloat(item.amount_delta) > 0 ? `+₹${item.amount_delta}` : `-₹${Math.abs(parseFloat(item.amount_delta))}`}
           </Text>
         )}
         {item.held_delta !== '0.00' && (
-          <Text className="text-yellow-500">Hold {item.held_delta > 0 ? `+₹${item.held_delta}` : `-₹${Math.abs(item.held_delta)}`}</Text>
+          <Text style={{ color: C.gold }}>Hold {parseFloat(item.held_delta) > 0 ? `+₹${item.held_delta}` : `-₹${Math.abs(parseFloat(item.held_delta))}`}</Text>
         )}
       </View>
-      <Text className="text-gray-400 text-xs mt-2">Balance: ₹{item.balance_after} (Hold: ₹{item.held_balance_after})</Text>
-      {item.note && <Text className="text-gray-500 text-xs mt-1">{item.note}</Text>}
-    </View>
+      <Text style={[T.bodySm, { color: C.textMuted }]}>Balance: ₹{item.balance_after} (Hold: ₹{item.held_balance_after})</Text>
+      {item.note && <Text style={[T.bodySm, { marginTop: 6, color: C.textSecondary }]}>{item.note}</Text>}
+    </LinearGradient>
   );
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
       <Header title="RFID Ledger" />
       {loading && !refreshing ? (
-        <View className="flex-1 justify-center items-center"><ActivityIndicator size="large" color="#fff" /></View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color={C.gold} /></View>
       ) : items.length === 0 ? (
-        <View className="flex-1 justify-center items-center"><Ionicons name="receipt-outline" size={60} color="#444" /><Text className="text-gray-500 mt-3">No ledger entries</Text></View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Ionicons name="receipt-outline" size={60} color={C.textMuted} /><Text style={[T.bodyMd, { marginTop: 12 }]}>No ledger entries</Text></View>
       ) : (
         <FlatList
           data={items}

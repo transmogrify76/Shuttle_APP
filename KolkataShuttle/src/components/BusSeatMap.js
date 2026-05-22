@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Animated, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { C, T } from '../styles/design';
 
 const BusSeatMap = ({ seatCapacity, occupiedSeats = [], selectedSeat, onSeatSelect }) => {
   const [seatLayout, setSeatLayout] = useState([]);
   const animatedValues = useRef({});
 
   useEffect(() => {
-    // Build seat layout: 4 columns, rows = ceil(seatCapacity / 4)
     const cols = 4;
     const rows = Math.ceil(seatCapacity / cols);
     const layout = [];
@@ -16,13 +16,7 @@ const BusSeatMap = ({ seatCapacity, occupiedSeats = [], selectedSeat, onSeatSele
       const rowSeats = [];
       for (let col = 0; col < cols; col++) {
         if (seatNumber <= seatCapacity) {
-          const seatId = seatNumber;
-          const isLeftSide = col < 2; // cols 0,1 are left side; cols 2,3 right side
-          rowSeats.push({
-            seatNumber: seatId,
-            isLeftSide,
-            isAisle: (col === 2), // after two seats, aisle indicator (not needed but visual)
-          });
+          rowSeats.push({ seatNumber, isLeftSide: col < 2 });
           seatNumber++;
         } else {
           rowSeats.push({ seatNumber: null });
@@ -65,25 +59,27 @@ const BusSeatMap = ({ seatCapacity, occupiedSeats = [], selectedSeat, onSeatSele
 
   const renderSeat = (seat, rowIdx, colIdx) => {
     if (seat.seatNumber === null) {
-      return <View key={`empty-${rowIdx}-${colIdx}`} className="w-14 h-14 mx-1" />;
+      return <View key={`empty-${rowIdx}-${colIdx}`} style={{ width: 52, height: 52, marginHorizontal: 4 }} />;
     }
 
     const status = getSeatStatus(seat.seatNumber);
-    let bgColor = 'bg-gray-700';
-    let borderColor = 'border-gray-600';
-    let textColor = 'text-gray-400';
+    let bgColor, borderColor, textColor;
     if (status === 'available') {
-      bgColor = 'bg-green-800';
-      borderColor = 'border-green-600';
-      textColor = 'text-white';
+      bgColor = C.greenDim;
+      borderColor = C.green;
+      textColor = C.green;
     } else if (status === 'selected') {
-      bgColor = 'bg-white';
-      borderColor = 'border-white';
-      textColor = 'text-black';
+      bgColor = C.gold;
+      borderColor = C.gold;
+      textColor = '#000';
     } else if (status === 'occupied') {
-      bgColor = 'bg-red-800';
-      borderColor = 'border-red-700';
-      textColor = 'text-red-200';
+      bgColor = C.redDim;
+      borderColor = C.red;
+      textColor = C.red;
+    } else {
+      bgColor = C.surfaceHigh;
+      borderColor = C.border;
+      textColor = C.textMuted;
     }
 
     return (
@@ -92,51 +88,57 @@ const BusSeatMap = ({ seatCapacity, occupiedSeats = [], selectedSeat, onSeatSele
         onPress={() => handlePress(seat.seatNumber)}
         disabled={status === 'occupied'}
         activeOpacity={0.8}
-        className={`w-14 h-14 rounded-xl border-2 items-center justify-center mx-1 ${bgColor} ${borderColor}`}
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 14,
+          borderWidth: 1.5,
+          borderColor,
+          backgroundColor: bgColor,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginHorizontal: 4,
+        }}
       >
         <Animated.View style={getAnimatedStyle(seat.seatNumber)}>
-          <Text className={`text-base font-bold ${textColor}`}>{seat.seatNumber}</Text>
+          <Text style={{ fontSize: 16, fontWeight: 'bold', color: textColor }}>{seat.seatNumber}</Text>
         </Animated.View>
       </TouchableOpacity>
     );
   };
 
   return (
-    <View className="bg-gray-900 rounded-2xl p-4">
+    <View style={{ backgroundColor: C.surfaceUp, borderRadius: 24, padding: 16 }}>
       {/* Legend */}
-      <View className="flex-row justify-center mb-4">
-        <View className="flex-row items-center mx-2">
-          <View className="w-4 h-4 rounded-full bg-green-800 mr-1" />
-          <Text className="text-gray-300 text-xs">Available</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 16, gap: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: C.green, marginRight: 6 }} />
+          <Text style={T.bodySm}>Available</Text>
         </View>
-        <View className="flex-row items-center mx-2">
-          <View className="w-4 h-4 rounded-full bg-white mr-1" />
-          <Text className="text-gray-300 text-xs">Selected</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: C.gold, marginRight: 6 }} />
+          <Text style={T.bodySm}>Selected</Text>
         </View>
-        <View className="flex-row items-center mx-2">
-          <View className="w-4 h-4 rounded-full bg-red-800 mr-1" />
-          <Text className="text-gray-300 text-xs">Occupied</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: C.red, marginRight: 6 }} />
+          <Text style={T.bodySm}>Occupied</Text>
         </View>
       </View>
 
-      {/* Driver seat indicator */}
-      <View className="flex-row justify-center mb-2">
-        <Ionicons name="car-sport-outline" size={20} color="#aaa" />
-        <Text className="text-gray-500 text-xs ml-1">Driver seat</Text>
+      {/* Driver indicator */}
+      <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 12, gap: 6 }}>
+        <Ionicons name="car-sport-outline" size={16} color={C.textMuted} />
+        <Text style={[T.bodySm, { color: C.textMuted }]}>Driver seat</Text>
       </View>
 
       {/* Seat grid */}
       {seatLayout.map((row, rowIdx) => (
-        <View key={`row-${rowIdx}`} className="flex-row justify-center mb-2">
-          {/* Row number on left */}
-          <View className="w-8 justify-center items-center">
-            <Text className="text-gray-400 text-sm font-bold">{rowIdx + 1}</Text>
+        <View key={`row-${rowIdx}`} style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 8 }}>
+          <View style={{ width: 30, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={[T.bodySm, { fontWeight: 'bold', color: C.textMuted }]}>{rowIdx + 1}</Text>
           </View>
-          {/* Left side seats (cols 0,1) */}
           {row.slice(0, 2).map((seat, colIdx) => renderSeat(seat, rowIdx, colIdx))}
-          {/* Aisle spacer */}
-          <View className="w-6" />
-          {/* Right side seats (cols 2,3) */}
+          <View style={{ width: 16 }} /> {/* aisle */}
           {row.slice(2, 4).map((seat, colIdx) => renderSeat(seat, rowIdx, colIdx + 2))}
         </View>
       ))}

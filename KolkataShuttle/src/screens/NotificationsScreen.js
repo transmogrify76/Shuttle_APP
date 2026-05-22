@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import { useNotifications } from '../context/NotificationContext';
+import { C, T } from '../styles/design';
 
 export default function NotificationsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -52,57 +54,62 @@ export default function NotificationsScreen({ navigation }) {
     return (
       <TouchableOpacity
         onPress={() => markAsRead(item.id)}
-        className={`p-4 border-b border-gray-800 ${isUnread ? 'bg-gray-900' : 'bg-black'}`}
+        style={{
+          padding: 16,
+          borderBottomWidth: 1,
+          borderBottomColor: C.border,
+          backgroundColor: isUnread ? C.surfaceUp : 'transparent',
+        }}
       >
-        <View className="flex-row justify-between items-start">
-          <View className="flex-1 mr-3">
-            <Text className={`text-base font-bold ${isUnread ? 'text-white' : 'text-gray-400'}`}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={[T.bodyMd, { fontWeight: 'bold', color: isUnread ? C.textPrimary : C.textMuted }]}>
               {item.title}
             </Text>
-            <Text className={`text-sm mt-1 ${isUnread ? 'text-gray-300' : 'text-gray-500'}`}>
+            <Text style={[T.bodySm, { marginTop: 4, color: isUnread ? C.textSecondary : C.textMuted }]}>
               {item.message}
             </Text>
-            <Text className="text-xs text-gray-600 mt-2">
+            <Text style={[T.bodySm, { marginTop: 8, color: C.textMuted }]}>
               {new Date(item.created_at).toLocaleString()}
             </Text>
           </View>
-          {isUnread && <View className="w-2 h-2 rounded-full bg-green-500 mt-2" />}
+          {isUnread && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: C.gold, marginTop: 6 }} />}
         </View>
       </TouchableOpacity>
     );
   };
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
       <Header title="Notifications" />
-      <View className="flex-row justify-between items-center px-4 py-2 border-b border-gray-800">
-        <View className="flex-row items-center">
-          <Text className="text-gray-400 text-sm mr-2">{unreadCount} unread</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={[T.bodySm, { marginRight: 8 }]}>{unreadCount} unread</Text>
           {wsConnected ? (
-  <Ionicons name="wifi" size={12} color="#10b981" />
-) : (
-  <Ionicons name="wifi-outline" size={12} color="#ef4444" />
-)}
+            <Ionicons name="wifi" size={12} color={C.green} />
+          ) : (
+            <Ionicons name="wifi-outline" size={12} color={C.red} />
+          )}
         </View>
         <TouchableOpacity onPress={handleMarkAllRead}>
-          <Text className="text-green-500 text-sm font-semibold">Mark all as read</Text>
+          <Text style={{ color: C.gold, fontSize: 12, fontWeight: 'bold' }}>Mark all as read</Text>
         </TouchableOpacity>
       </View>
       {loading && !refreshing ? (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#fff" />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={C.gold} />
         </View>
       ) : notifications.length === 0 ? (
-        <View className="flex-1 justify-center items-center">
-          <Ionicons name="notifications-off-outline" size={60} color="#444" />
-          <Text className="text-gray-500 text-base mt-3">No notifications</Text>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Ionicons name="notifications-off-outline" size={60} color={C.textMuted} />
+          <Text style={[T.bodyMd, { marginTop: 12 }]}>No notifications</Text>
         </View>
       ) : (
         <FlatList
           data={notifications}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.gold} />}
           contentContainerStyle={{ paddingBottom: insets.bottom }}
         />
       )}

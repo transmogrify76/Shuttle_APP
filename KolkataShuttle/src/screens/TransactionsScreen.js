@@ -11,9 +11,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import { getTransactions, getInvoice } from '../services/bookingApi';
 import { generateInvoicePDF } from '../utils/invoiceGenerator';
+import { C, T } from '../styles/design';
 
 const statusOptions = ['all', 'paid', 'failed', 'refunded', 'refund_pending', 'created'];
 const monthOptions = [
@@ -25,21 +27,20 @@ const monthOptions = [
 
 const getStatusColor = (status) => {
   switch (status) {
-    case 'paid': return 'bg-green-900';
-    case 'failed': return 'bg-red-900';
-    case 'refunded': return 'bg-blue-900';
-    case 'refund_pending': return 'bg-yellow-900';
-    default: return 'bg-gray-800';
+    case 'paid': return C.greenDim;
+    case 'failed': return C.redDim;
+    case 'refunded': return C.blueDim;
+    case 'refund_pending': return C.goldDim;
+    default: return C.surfaceHigh;
   }
 };
-
 const getStatusTextColor = (status) => {
   switch (status) {
-    case 'paid': return 'text-green-400';
-    case 'failed': return 'text-red-400';
-    case 'refunded': return 'text-blue-400';
-    case 'refund_pending': return 'text-yellow-400';
-    default: return 'text-gray-400';
+    case 'paid': return C.green;
+    case 'failed': return C.red;
+    case 'refunded': return C.blue;
+    case 'refund_pending': return C.gold;
+    default: return C.textMuted;
   }
 };
 
@@ -111,55 +112,51 @@ export default function TransactionsScreen({ navigation }) {
     const isLoading = invoiceLoading[item.booking_id];
 
     return (
-      <TouchableOpacity
-        onPress={() => navigation.navigate('BookingDetail', { bookingId: item.booking_id })}
-        className="bg-gray-900 rounded-xl p-4 mb-3 mx-4 border border-gray-800"
-      >
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-white font-bold text-base flex-1">{routeName}</Text>
-          <View className={`px-3 py-1 rounded-full ${getStatusColor(effectiveStatus)}`}>
-            <Text className={`text-xs font-bold ${getStatusTextColor(effectiveStatus)} uppercase`}>
-              {effectiveStatus?.replace('_', ' ')}
-            </Text>
+      <TouchableOpacity onPress={() => navigation.navigate('BookingDetail', { bookingId: item.booking_id })} activeOpacity={0.8}>
+        <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 20, padding: 16, marginHorizontal: 16, marginBottom: 12, borderWidth: 1, borderColor: C.border }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <Text style={[T.bodyMd, { flex: 1 }]}>{routeName}</Text>
+            <View style={{ backgroundColor: getStatusColor(effectiveStatus), paddingHorizontal: 10, paddingVertical: 4, borderRadius: 16 }}>
+              <Text style={{ color: getStatusTextColor(effectiveStatus), fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' }}>
+                {effectiveStatus?.replace('_', ' ')}
+              </Text>
+            </View>
           </View>
-        </View>
-        <Text className="text-gray-300 text-sm mb-1">{pickupName} → {dropoffName}</Text>
-        <Text className="text-gray-400 text-xs mb-1">{date} at {time}</Text>
-        <Text className="text-white font-bold text-lg mt-1">₹{amount}</Text>
-
-        {isCompleted && (
-          <TouchableOpacity
-            onPress={() => handleInvoice(item.booking_id)}
-            disabled={isLoading}
-            className="mt-3 flex-row items-center justify-center bg-white/10 rounded-full py-2 px-4"
-          >
-            <Ionicons name="document-text-outline" size={18} color="#fff" />
-            <Text className="text-white text-sm ml-2 font-medium">
-              {isLoading ? 'Generating...' : 'Download Invoice'}
-            </Text>
-          </TouchableOpacity>
-        )}
+          <Text style={[T.bodySm, { marginBottom: 4 }]}>{pickupName} → {dropoffName}</Text>
+          <Text style={[T.bodySm, { color: C.textMuted, marginBottom: 6 }]}>{date} at {time}</Text>
+          <Text style={[T.displayMd, { color: C.gold, marginBottom: 8 }]}>₹{amount}</Text>
+          {isCompleted && (
+            <TouchableOpacity
+              onPress={() => handleInvoice(item.booking_id)}
+              disabled={isLoading}
+              style={{ backgroundColor: C.goldDim, borderRadius: 30, paddingVertical: 8, paddingHorizontal: 16, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', marginTop: 4 }}
+            >
+              <Ionicons name="document-text-outline" size={16} color={C.gold} />
+              <Text style={{ color: C.gold, marginLeft: 6, fontWeight: 'bold', fontSize: 12 }}>{isLoading ? 'Generating...' : 'Download Invoice'}</Text>
+            </TouchableOpacity>
+          )}
+        </LinearGradient>
       </TouchableOpacity>
     );
   };
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
       <Header title="Transactions" />
-      <View className="flex-row justify-between items-center px-4 py-2 border-b border-gray-800">
-        <Text className="text-gray-400 text-sm">{transactions.length} transactions</Text>
-        <TouchableOpacity onPress={() => setFilterModalVisible(true)} className="flex-row items-center">
-          <Ionicons name="filter-outline" size={20} color="#fff" />
-          <Text className="text-white text-sm ml-1">Filter</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border }}>
+        <Text style={[T.bodySm, { color: C.textMuted }]}>{transactions.length} transactions</Text>
+        <TouchableOpacity onPress={() => setFilterModalVisible(true)} style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Ionicons name="filter-outline" size={18} color={C.gold} />
+          <Text style={{ color: C.gold, marginLeft: 4, fontWeight: '500' }}>Filter</Text>
         </TouchableOpacity>
       </View>
 
       {loading && !refreshing ? (
-        <View className="flex-1 justify-center items-center"><ActivityIndicator size="large" color="#fff" /></View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color={C.gold} /></View>
       ) : transactions.length === 0 ? (
-        <View className="flex-1 justify-center items-center">
-          <Ionicons name="receipt-outline" size={60} color="#444" />
-          <Text className="text-gray-500 text-base mt-3">No transactions found</Text>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Ionicons name="receipt-outline" size={60} color={C.textMuted} />
+          <Text style={[T.bodyMd, { marginTop: 12 }]}>No transactions found</Text>
         </View>
       ) : (
         <FlatList
@@ -172,45 +169,49 @@ export default function TransactionsScreen({ navigation }) {
         />
       )}
 
-      {/* Filter Modal (same as before) */}
+      {/* Filter Modal */}
       <Modal visible={filterModalVisible} transparent animationType="slide">
-        <View className="flex-1 bg-black/90 justify-end">
-          <View className="bg-gray-900 rounded-t-3xl p-5 max-h-[80%]">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-xl font-bold text-white">Filter Transactions</Text>
-              <TouchableOpacity onPress={() => setFilterModalVisible(false)}><Ionicons name="close" size={24} color="#fff" /></TouchableOpacity>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'flex-end' }}>
+          <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 20, maxHeight: '80%', borderTopWidth: 1, borderColor: C.border }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={T.displayMd}>Filter Transactions</Text>
+              <TouchableOpacity onPress={() => setFilterModalVisible(false)}><Ionicons name="close" size={24} color={C.textPrimary} /></TouchableOpacity>
             </View>
             <ScrollView>
-              <Text className="text-white font-semibold mb-2">Status</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+              <Text style={[T.headingSm, { marginBottom: 8 }]}>Status</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16, flexDirection: 'row' }}>
                 {statusOptions.map((status) => (
-                  <TouchableOpacity key={status} onPress={() => setSelectedStatus(status)} className={`px-4 py-2 rounded-full mr-2 ${selectedStatus === status ? 'bg-white' : 'bg-gray-800'}`}>
-                    <Text className={selectedStatus === status ? 'text-black' : 'text-white'}>{status === 'all' ? 'All' : status.replace('_', ' ').toUpperCase()}</Text>
+                  <TouchableOpacity key={status} onPress={() => setSelectedStatus(status)} style={{ backgroundColor: selectedStatus === status ? C.gold : C.surfaceHigh, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 30, marginRight: 8 }}>
+                    <Text style={{ color: selectedStatus === status ? '#000' : C.textPrimary, fontWeight: '500' }}>{status === 'all' ? 'All' : status.replace('_', ' ').toUpperCase()}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-              <Text className="text-white font-semibold mb-2">Month</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+              <Text style={[T.headingSm, { marginBottom: 8 }]}>Month</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
                 {monthOptions.map((month) => (
-                  <TouchableOpacity key={month.value} onPress={() => setSelectedMonth(selectedMonth === month.value ? null : month.value)} className={`px-4 py-2 rounded-full mr-2 ${selectedMonth === month.value ? 'bg-white' : 'bg-gray-800'}`}>
-                    <Text className={selectedMonth === month.value ? 'text-black' : 'text-white'}>{month.label}</Text>
+                  <TouchableOpacity key={month.value} onPress={() => setSelectedMonth(selectedMonth === month.value ? null : month.value)} style={{ backgroundColor: selectedMonth === month.value ? C.gold : C.surfaceHigh, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 30, marginRight: 8 }}>
+                    <Text style={{ color: selectedMonth === month.value ? '#000' : C.textPrimary }}>{month.label}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-              <Text className="text-white font-semibold mb-2">Year</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
+              <Text style={[T.headingSm, { marginBottom: 8 }]}>Year</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 24 }}>
                 {[currentYear - 1, currentYear, currentYear + 1].map((year) => (
-                  <TouchableOpacity key={year} onPress={() => setSelectedYear(selectedYear === year ? null : year)} className={`px-4 py-2 rounded-full mr-2 ${selectedYear === year ? 'bg-white' : 'bg-gray-800'}`}>
-                    <Text className={selectedYear === year ? 'text-black' : 'text-white'}>{year}</Text>
+                  <TouchableOpacity key={year} onPress={() => setSelectedYear(selectedYear === year ? null : year)} style={{ backgroundColor: selectedYear === year ? C.gold : C.surfaceHigh, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 30, marginRight: 8 }}>
+                    <Text style={{ color: selectedYear === year ? '#000' : C.textPrimary }}>{year}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-              <View className="flex-row justify-between">
-                <TouchableOpacity onPress={resetFilters} className="flex-1 mr-2 bg-gray-800 py-3 rounded-full"><Text className="text-white text-center font-medium">Reset</Text></TouchableOpacity>
-                <TouchableOpacity onPress={applyFilters} className="flex-1 ml-2 bg-white py-3 rounded-full"><Text className="text-black text-center font-medium">Apply</Text></TouchableOpacity>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+                <TouchableOpacity onPress={resetFilters} style={{ flex: 1, backgroundColor: C.surfaceHigh, paddingVertical: 12, borderRadius: 30, alignItems: 'center' }}>
+                  <Text style={{ color: C.textPrimary }}>Reset</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={applyFilters} style={{ flex: 1, backgroundColor: C.gold, paddingVertical: 12, borderRadius: 30, alignItems: 'center' }}>
+                  <Text style={{ color: '#000', fontWeight: 'bold' }}>Apply</Text>
+                </TouchableOpacity>
               </View>
             </ScrollView>
-          </View>
+          </LinearGradient>
         </View>
       </Modal>
     </View>

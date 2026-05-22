@@ -1,21 +1,32 @@
 import React from 'react';
 import { TouchableOpacity, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { C, T } from '../styles/design';
 
 export default function RideOptionCard({ icon, name, price, duration, selected, onSelect }) {
   return (
     <TouchableOpacity
-      className={`flex-row items-center justify-between p-4 border-b border-gray-100 ${selected ? 'bg-gray-50' : ''}`}
       onPress={onSelect}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: C.border,
+        backgroundColor: selected ? C.surfaceUp : 'transparent',
+      }}
     >
-      <View className="flex-row items-center">
-        <Ionicons name={icon} size={28} color="#000" />
-        <View className="ml-3">
-          <Text className="text-base font-semibold text-black">{name}</Text>
-          <Text className="text-xs text-gray-500">{duration}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Ionicons name={icon} size={28} color={selected ? C.gold : C.textPrimary} />
+        <View style={{ marginLeft: 12 }}>
+          <Text style={[T.bodyMd, { color: selected ? C.gold : C.textPrimary }]}>{name}</Text>
+          <Text style={[T.bodySm, { marginTop: 2 }]}>{duration}</Text>
         </View>
       </View>
-      <Text className="text-base font-semibold text-black">₹{price}</Text>
+      <Text style={[T.bodyLg, { fontWeight: 'bold', color: selected ? C.gold : C.textPrimary }]}>
+        ₹{price}
+      </Text>
     </TouchableOpacity>
   );
 }

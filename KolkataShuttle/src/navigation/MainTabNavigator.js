@@ -5,6 +5,7 @@ import HomeScreen from '../screens/HomeScreen';
 import MyBookingsScreen from '../screens/MyBookingsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RoutesScreen from '../screens/RoutesScreen';
+import { C } from '../styles/design';
 
 const Tab = createBottomTabNavigator();
 
@@ -16,25 +17,25 @@ export default function MainTabNavigator() {
           let iconName;
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Bookings') {
-            iconName = focused ? 'calendar' : 'calendar-outline';
           } else if (route.name === 'Routes') {
             iconName = focused ? 'map' : 'map-outline';
+          } else if (route.name === 'Bookings') {
+            iconName = focused ? 'calendar' : 'calendar-outline';
           } else if (route.name === 'Profile') {
-            // Fixed: removed space and used modern avatar icon
             iconName = focused ? 'person-circle' : 'person-circle-outline';
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#fff',
-        tabBarInactiveTintColor: '#666',
+        tabBarActiveTintColor: C.gold,
+        tabBarInactiveTintColor: C.textMuted,
         tabBarStyle: {
-          backgroundColor: '#000',
+          backgroundColor: C.surface,
           borderTopWidth: 0,
           elevation: 0,
           height: 60,
           paddingBottom: 8,
           paddingTop: 8,
+          borderTopColor: C.border,
         },
         headerShown: false,
       })}

@@ -13,10 +13,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AnimatedButton from '../components/AnimatedButton';
 import { useAuth } from '../context/AuthContext';
 import { fetchProfile } from '../services/profileApi';
+import { C, T } from '../styles/design';
 
 export default function OTPVerificationScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
-  const { email, flow, role } = route.params; // role is 'passenger' but we'll ignore it
+  const { email, flow } = route.params;
 
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const inputs = useRef([]);
@@ -52,10 +53,8 @@ export default function OTPVerificationScreen({ route, navigation }) {
 
     let result;
     if (flow === 'signup') {
-      // signup will use default role = 'passenger' (function default)
       result = await signup(email, otpString);
     } else {
-      // login also uses default role = 'passenger'
       result = await login(email, otpString);
     }
 
@@ -66,72 +65,74 @@ export default function OTPVerificationScreen({ route, navigation }) {
       return;
     }
 
-    // After successful authentication, check if profile exists (has full_name)
+    // After successful authentication, check if profile exists
     try {
       const profile = await fetchProfile();
       if (profile && profile.full_name && profile.full_name.trim().length > 0) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'MainTabs' }],
-        });
+        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
       } else {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Profile' }],
-        });
+        navigation.reset({ index: 0, routes: [{ name: 'Profile' }] });
       }
     } catch (error) {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Profile' }],
-      });
+      navigation.reset({ index: 0, routes: [{ name: 'Profile' }] });
     }
   };
 
   return (
-    <View className="flex-1 bg-black">
-      <View className="absolute top-[-120px] left-[-80px] w-[260px] h-[260px] rounded-full bg-white/5" />
-      <View className="absolute bottom-[-140px] right-[-80px] w-[300px] h-[300px] rounded-full bg-white/5" />
-
-      <LinearGradient colors={['#000000', '#050505', '#000000']} className="flex-1">
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <LinearGradient colors={[C.bg, C.surface]} style={{ flex: 1 }}>
         <View style={{ paddingTop: insets.top }} />
 
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
-          <View className="flex-1 justify-center px-6">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}>
             <View>
-              <View className="mb-10">
-                <Text className="text-white text-3xl font-extrabold tracking-tight">Verify OTP</Text>
-                <Text className="text-gray-400 text-sm mt-2">Enter the 6-digit code sent to</Text>
-                <Text className="text-white text-sm mt-1 font-medium">{email}</Text>
-              </View>
-
-              <View className="flex-row justify-between mb-10">
-                {otp.map((digit, index) => (
-                  <TextInput
-                    key={index}
-                    ref={(ref) => (inputs.current[index] = ref)}
-                    className={`w-12 h-14 rounded-2xl text-center text-xl border ${
-                      digit
-                        ? 'bg-white text-black border-white'
-                        : 'bg-white/5 text-white border-white/10'
-                    }`}
-                    value={digit}
-                    onChangeText={(text) => handleChange(text, index)}
-                    onKeyPress={(e) => handleKeyPress(e, index)}
-                    keyboardType="number-pad"
-                    maxLength={1}
-                  />
-                ))}
-              </View>
-
-              <AnimatedButton title={loading ? 'Verifying...' : 'Verify'} onPress={handleSubmit} disabled={loading} />
-
-              <TouchableOpacity className="mt-6 items-center">
-                <Text className="text-gray-400 text-sm">
-                  Didn’t receive code? <Text className="text-white font-semibold">Resend</Text>
-                </Text>
-              </TouchableOpacity>
+              <Text style={[T.displayLg, { marginBottom: 8 }]}>Verify OTP</Text>
+              <Text style={[T.bodySm, { marginTop: 4 }]}>Enter the 6-digit code sent to</Text>
+              <Text style={[T.bodyMd, { marginTop: 2, color: C.gold }]}>{email}</Text>
             </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginVertical: 32 }}>
+              {otp.map((digit, index) => (
+                <TextInput
+                  key={index}
+                  ref={(ref) => (inputs.current[index] = ref)}
+                  style={{
+                    width: 52,
+                    height: 60,
+                    borderRadius: 16,
+                    textAlign: 'center',
+                    fontSize: 20,
+                    fontWeight: 'bold',
+                    borderWidth: 1,
+                    borderColor: digit ? C.gold : C.border,
+                    backgroundColor: digit ? C.gold : C.surfaceUp,
+                    color: digit ? '#000' : C.textPrimary,
+                  }}
+                  value={digit}
+                  onChangeText={(text) => handleChange(text, index)}
+                  onKeyPress={(e) => handleKeyPress(e, index)}
+                  keyboardType="number-pad"
+                  maxLength={1}
+                />
+              ))}
+            </View>
+
+            <AnimatedButton
+              title={loading ? 'Verifying...' : 'Verify'}
+              onPress={handleSubmit}
+              disabled={loading}
+              buttonColor="gold"
+              style={{ marginBottom: 16 }}
+            />
+
+            <TouchableOpacity style={{ alignItems: 'center' }}>
+              <Text style={[T.bodySm, { color: C.textSecondary }]}>
+                Didn’t receive code? <Text style={{ color: C.gold, fontWeight: 'bold' }}>Resend</Text>
+              </Text>
+            </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
 

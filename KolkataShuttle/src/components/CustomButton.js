@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { C } from '../styles/design';
 
 export default function CustomButton({ title, onPress, disabled, loading, className }) {
   return (
@@ -11,15 +12,28 @@ export default function CustomButton({ title, onPress, disabled, loading, classN
       className={className}
     >
       <LinearGradient
-        colors={disabled ? ['#334155', '#1e293b'] : ['#3b82f6', '#8b5cf6']}
+        colors={disabled ? [C.surfaceHigh, C.surfaceHigh] : [C.gold, C.goldLight]}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }} 
-        className="py-3.5 rounded-full items-center j ustify-center"
+        end={{ x: 1, y: 0 }}
+        style={{
+          borderRadius: 30,
+          paddingVertical: 14,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
       >
         {loading ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={disabled ? C.textMuted : '#000'} />
         ) : (
-          <Text className="text-white font-semibold text-base">{title}</Text>
+          <Text
+            style={{
+              color: disabled ? C.textMuted : '#000',
+              fontWeight: 'bold',
+              fontSize: 16,
+            }}
+          >
+            {title}
+          </Text>
         )}
       </LinearGradient>
     </TouchableOpacity>

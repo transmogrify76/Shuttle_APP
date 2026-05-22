@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, Alert, TouchableOpacity, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import {
   getUpcomingBookings,
@@ -11,6 +12,7 @@ import {
   getBookingCurrentStatus,
 } from '../services/bookingApi';
 import { eventEmitter } from '../utils/eventEmitter';
+import { C, T } from '../styles/design';
 
 const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
   if (!driverInfo) return null;
@@ -19,37 +21,42 @@ const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
   const hasRating = ratingNum !== null;
   const ratingCount = driverInfo.driver_rating_count || 0;
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <View className="flex-1 bg-black/90 justify-center items-center p-5">
-        <View className="bg-black rounded-3xl p-6 w-full border border-gray-800">
-          <Text className="text-2xl font-bold text-white mb-4">Driver & Vehicle</Text>
-          <View className="flex-row items-center mb-4">
-            <View className="w-12 h-12 rounded-full bg-gray-800 items-center justify-center mr-3">
-              <Ionicons name="person" size={24} color="#fff" />
-            </View>
-            <View>
-              <Text className="text-white font-semibold">{driverInfo.driver_name || 'N/A'}</Text>
-              <View className="flex-row items-center">
-                <Ionicons name="star" size={14} color="#fbbf24" />
-                <Text className="text-gray-400 text-xs ml-1">
-                  {hasRating 
-                    ? `${ratingNum.toFixed(1)} (${ratingCount} ratings)`
-                    : `New (${ratingCount} ratings)`}
-                </Text>
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+        <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 28, width: '100%', borderWidth: 1, borderColor: C.border, overflow: 'hidden' }}>
+          <LinearGradient colors={['rgba(201,168,76,0.25)', 'transparent']} style={{ padding: 24 }}>
+            <Text style={[T.headingSm, { marginBottom: 10 }]}>Your Driver</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <LinearGradient colors={[C.goldDim, 'rgba(201,168,76,0.05)']} style={{ width: 56, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                <Ionicons name="person" size={26} color={C.gold} />
+              </LinearGradient>
+              <View>
+                <Text style={T.displayMd}>{driverInfo.driver_name || 'N/A'}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                  {[...Array(5)].map((_, i) => <Ionicons key={i} name={i < Math.round(ratingNum || 0) ? 'star' : 'star-outline'} size={12} color={C.gold} />)}
+                  <Text style={[T.bodySm, { marginLeft: 6 }]}>{hasRating ? `${ratingNum.toFixed(1)} (${ratingCount})` : 'New driver'}</Text>
+                </View>
               </View>
             </View>
+          </LinearGradient>
+          <View style={{ padding: 24, paddingTop: 0 }}>
+            <View style={{ backgroundColor: C.surfaceUp, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: C.border }}>
+              <Text style={[T.headingSm, { marginBottom: 12 }]}>Vehicle</Text>
+              {[
+                { label: 'Model', value: driverInfo.vehicle_name || 'Bus' },
+                { label: 'Details', value: `${driverInfo.vehicle_model || '—'} · ${driverInfo.vehicle_color || '—'}` },
+                { label: 'Reg. No.', value: driverInfo.vehicle_registration_number || 'N/A' },
+                { label: 'Capacity', value: `${driverInfo.vehicle_total_seat || '?'} seats` },
+              ].map((item, i) => (
+                <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: i < 3 ? 1 : 0, borderColor: C.border }}>
+                  <Text style={[T.bodySm, { color: C.textMuted }]}>{item.label}</Text>
+                  <Text style={T.bodyMd}>{item.value}</Text>
+                </View>
+              ))}
+            </View>
+            <TouchableOpacity onPress={onClose} style={{ marginTop: 20 }}><LinearGradient colors={[C.gold, C.goldLight]} style={{ borderRadius: 16, paddingVertical: 15, alignItems: 'center' }}><Text style={{ color: '#000', fontWeight: '700' }}>Close</Text></LinearGradient></TouchableOpacity>
           </View>
-          <View className="bg-gray-900 rounded-xl p-3 mb-4">
-            <Text className="text-white font-semibold mb-1">Vehicle</Text>
-            <Text className="text-gray-300">{driverInfo.vehicle_name || 'Bus'}</Text>
-            <Text className="text-gray-400 text-sm">{driverInfo.vehicle_model} ({driverInfo.vehicle_color})</Text>
-            <Text className="text-gray-400 text-sm">Reg: {driverInfo.vehicle_registration_number || 'N/A'}</Text>
-            <Text className="text-gray-400 text-sm">Total seats: {driverInfo.vehicle_total_seat || '?'}</Text>
-          </View>
-          <TouchableOpacity onPress={onClose} className="bg-white py-3 rounded-full">
-            <Text className="text-black text-center font-semibold">Close</Text>
-          </TouchableOpacity>
-        </View>
+        </LinearGradient>
       </View>
     </Modal>
   );
@@ -67,238 +74,105 @@ export default function MyBookingsScreen({ navigation }) {
   const [driverModalVisible, setDriverModalVisible] = useState(false);
   const [currentDriverInfo, setCurrentDriverInfo] = useState(null);
 
-  useEffect(() => {
-    loadData();
-  }, [activeTab]);
-
+  useEffect(() => { loadData(); }, [activeTab]);
   useEffect(() => {
     const handleRefresh = (data) => {
-      const { keys } = data;
-      if (keys.includes('bookings_list') || keys.includes('history')) loadData(true);
-      if (keys.includes('current_booking') && activeTab === 'ongoing') loadData(true);
+      if (data.keys.includes('bookings_list') || data.keys.includes('history')) loadData(true);
+      if (data.keys.includes('current_booking') && activeTab === 'ongoing') loadData(true);
     };
     eventEmitter.on('refreshData', handleRefresh);
     return () => eventEmitter.off('refreshData', handleRefresh);
   }, [activeTab]);
 
   const loadData = async (refresh = false) => {
-    if (refresh) setRefreshing(true);
-    else setLoading(true);
+    if (refresh) setRefreshing(true); else setLoading(true);
     try {
       if (activeTab === 'upcoming') {
-        const response = await getUpcomingBookings();
-        setUpcoming(response.items || []);
+        const res = await getUpcomingBookings();
+        setUpcoming(res.items || []);
       } else if (activeTab === 'ongoing') {
-        const response = await getCurrentBookings();
-        const items = response.items || [];
+        const res = await getCurrentBookings();
+        const items = res.items || [];
         setOngoing(items);
         const statusMap = {};
-        for (const booking of items) {
-          try {
-            const status = await getBookingCurrentStatus(booking.id);
-            statusMap[booking.id] = status;
-          } catch (err) {
-            console.error(`Failed to fetch status for ${booking.id}`, err);
-          }
+        for (const b of items) {
+          try { statusMap[b.id] = await getBookingCurrentStatus(b.id); } catch(e) {}
         }
         setOngoingStatus(statusMap);
       } else {
-        const response = await getPassengerHistory();
-        setHistory(response.items || []);
+        const res = await getPassengerHistory();
+        setHistory(res.items || []);
       }
-    } catch (error) {
-      Alert.alert('Error', error.message || 'Unable to load bookings');
-    } finally {
-      if (refresh) setRefreshing(false);
-      else setLoading(false);
-    }
+    } catch (err) { Alert.alert('Error', err.message); }
+    finally { if (refresh) setRefreshing(false); else setLoading(false); }
   };
-
   const onRefresh = () => loadData(true);
+  const showDriverInfo = async (tripId) => { try { setCurrentDriverInfo(await getDriverVehicleInfo(tripId)); setDriverModalVisible(true); } catch(e) { Alert.alert('Error', 'Could not fetch driver info'); } };
 
-  const showDriverInfo = async (tripId) => {
-    if (!tripId) return;
-    try {
-      const info = await getDriverVehicleInfo(tripId);
-      setCurrentDriverInfo(info);
-      setDriverModalVisible(true);
-    } catch (err) {
-      Alert.alert('Error', 'Could not fetch driver info');
-    }
-  };
-
-  const renderBookingItem = ({ item, index }) => {
-    const pickupName = item.pickup_stop?.stop?.name || item.pickup_stop?.name || 'Pickup';
-    const dropoffName = item.dropoff_stop?.stop?.name || item.dropoff_stop?.name || 'Dropoff';
-    const status = item.booking_status || 'unknown';
+  const renderItem = ({ item, index }) => {
+    const pickup = item.pickup_stop?.stop?.name || item.pickup_stop?.name || 'Pickup';
+    const dropoff = item.dropoff_stop?.stop?.name || item.dropoff_stop?.name || 'Dropoff';
+    const status = item.booking_status;
     const isOngoing = activeTab === 'ongoing';
-    const liveStatus = isOngoing ? ongoingStatus[item.id] : null;
+    const live = ongoingStatus[item.id];
     const seatNumber = item.seat_number;
-
-    let statusColor = 'bg-gray-800';
-    let statusTextColor = 'text-gray-400';
-    if (status === 'booked' || status === 'pending_payment') {
-      statusColor = 'bg-green-900';
-      statusTextColor = 'text-green-400';
-    } else if (status === 'completed') {
-      statusColor = 'bg-blue-900';
-      statusTextColor = 'text-blue-400';
-    } else if (status === 'cancelled' || status === 'canceled' || status === 'missed') {
-      statusColor = 'bg-red-900';
-      statusTextColor = 'text-red-400';
-    }
-
-    const hasAc = item.route?.has_ac;
-    const otp = item.otp;
+    let statusColor = '#2A2A35';
+    let statusText = '#9CA3AF';
+    if (status === 'booked' || status === 'pending_payment') { statusColor = '#2C5F2D'; statusText = '#34C97E'; }
+    else if (status === 'completed') { statusColor = '#1F3A5F'; statusText = '#4A90D9'; }
+    else if (status === 'cancelled' || status === 'canceled' || status === 'missed') { statusColor = '#5F2C2C'; statusText = '#E05252'; }
 
     return (
-      <TouchableOpacity
-        key={item.id || index}
-        onPress={() => navigation.navigate('BookingDetail', { bookingId: item.id })}
-        className="bg-gray-900 rounded-xl p-4 mb-3 mx-4 border border-gray-800"
-      >
-        <View className="flex-row justify-between items-center mb-2">
-          <View className="flex-row items-center flex-1">
-            <Text className="text-white font-bold text-base flex-1">
-              {pickupName} → {dropoffName}
-            </Text>
-            {hasAc && (
-              <View className="ml-2 px-2 py-0.5 rounded-full bg-green-100">
-                <Text className="text-green-700 text-xs font-bold">AC</Text>
+      <TouchableOpacity onPress={() => navigation.navigate('BookingDetail', { bookingId: item.id })} style={{ marginHorizontal: 16, marginBottom: 12 }}>
+        <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 20, padding: 16, borderWidth: 1, borderColor: C.border }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <Text style={[T.bodyMd, { flex: 1 }]}>{pickup} → {dropoff}</Text>
+            <View style={{ backgroundColor: statusColor, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}><Text style={{ color: statusText, fontSize: 10, fontWeight: 'bold' }}>{status.replace('_', ' ').toUpperCase()}</Text></View>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}><Ionicons name="bus-outline" size={14} color={C.textMuted} /><Text style={[T.bodySm, { marginLeft: 6 }]}>Shuttle</Text></View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}><Ionicons name="time-outline" size={14} color={C.textMuted} /><Text style={[T.bodySm, { marginLeft: 6 }]}>{new Date(item.created_at).toLocaleDateString()}</Text></View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}><Ionicons name="cash-outline" size={14} color={C.textMuted} /><Text style={[T.bodySm, { marginLeft: 6 }]}>₹{item.fare_amount}</Text></View>
+          {seatNumber && <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}><Ionicons name="grid-outline" size={14} color={C.textMuted} /><Text style={[T.bodySm, { marginLeft: 6 }]}>Seat: {seatNumber}</Text></View>}
+          {item.otp && <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}><Ionicons name="key-outline" size={14} color={C.textMuted} /><Text style={[T.bodySm, { marginLeft: 6 }]}>OTP: {item.otp}</Text></View>}
+          {isOngoing && live && (
+            <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: C.border }}>
+              <Text style={[T.bodySm]}>{live.trip_status === 'in_progress' ? '🚌 Trip in progress' : live.trip_status}</Text>
+              {live.current_progress_stop && <Text style={[T.bodySm, { color: C.textMuted }]}>Current: {live.current_progress_stop.stop?.name}</Text>}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+                <Text style={[T.bodySm, { color: C.textMuted }]}>Boarding: {live.boarding_scan_completed ? '✅' : '⏳'}</Text>
+                <Text style={[T.bodySm, { color: C.textMuted }]}>Drop: {live.drop_scan_completed ? '✅' : '⏳'}</Text>
               </View>
-            )}
-          </View>
-          <View className={`px-3 py-1 rounded-full ${statusColor}`}>
-            <Text className={`text-xs font-bold ${statusTextColor}`}>
-              {status.replace('_', ' ').toUpperCase()}
-            </Text>
-          </View>
-        </View>
-        <View className="flex-row items-center mb-1">
-          <Ionicons name="bus-outline" size={14} color="#aaa" />
-          <Text className="text-gray-400 text-sm ml-2">Shuttle</Text>
-        </View>
-        <View className="flex-row items-center mb-1">
-          <Ionicons name="time-outline" size={14} color="#aaa" />
-          <Text className="text-gray-400 text-sm ml-2">
-            {new Date(item.created_at).toLocaleDateString()}
-          </Text>
-        </View>
-        <View className="flex-row items-center mb-1">
-          <Ionicons name="cash-outline" size={14} color="#aaa" />
-          <Text className="text-gray-400 text-sm ml-2">₹{item.fare_amount}</Text>
-        </View>
-        {seatNumber && (
-          <View className="flex-row items-center mt-1">
-            <Ionicons name="grid-outline" size={14} color="#aaa" />
-            <Text className="text-gray-400 text-sm ml-2">Seat: {seatNumber}</Text>
-          </View>
-        )}
-        {otp && (
-          <View className="flex-row items-center mt-1">
-            <Ionicons name="key-outline" size={14} color="#aaa" />
-            <Text className="text-gray-400 text-xs ml-2">OTP: {otp}</Text>
-          </View>
-        )}
-        {isOngoing && liveStatus && (
-          <View className="mt-2 pt-2 border-t border-gray-800">
-            <Text className="text-gray-400 text-xs">
-              {liveStatus.trip_status === 'in_progress' ? '🚌 Trip in progress' : liveStatus.trip_status}
-            </Text>
-            {liveStatus.current_progress_stop && (
-              <Text className="text-gray-400 text-xs mt-1">
-                Current stop: {liveStatus.current_progress_stop.stop?.name}
-              </Text>
-            )}
-            <View className="flex-row justify-between mt-1">
-              <Text className="text-gray-500 text-xs">
-                Boarding: {liveStatus.boarding_scan_completed ? '✅' : '⏳'}
-              </Text>
-              <Text className="text-gray-500 text-xs">
-                Drop: {liveStatus.drop_scan_completed ? '✅' : '⏳'}
-              </Text>
             </View>
-          </View>
-        )}
-        {item.scheduled_trip_id && (
-          <TouchableOpacity
-            onPress={() => showDriverInfo(item.scheduled_trip_id)}
-            className="mt-2 flex-row items-center"
-          >
-            <Ionicons name="car-outline" size={14} color="#aaa" />
-            <Text className="text-gray-400 text-xs ml-1">View driver & vehicle</Text>
-          </TouchableOpacity>
-        )}
+          )}
+          {item.scheduled_trip_id && (
+            <TouchableOpacity onPress={() => showDriverInfo(item.scheduled_trip_id)} style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="car-outline" size={14} color={C.textMuted} />
+              <Text style={[T.bodySm, { marginLeft: 4, color: C.textMuted }]}>View driver & vehicle</Text>
+            </TouchableOpacity>
+          )}
+        </LinearGradient>
       </TouchableOpacity>
     );
   };
-
-  const getDataForTab = () => {
-    if (activeTab === 'upcoming') return upcoming;
-    if (activeTab === 'ongoing') return ongoing;
-    return history;
-  };
-
-  const data = getDataForTab();
+  const data = activeTab === 'upcoming' ? upcoming : (activeTab === 'ongoing' ? ongoing : history);
   const isEmpty = (!loading && data.length === 0);
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
       <Header title="My Bookings" />
-      <View className="flex-row border-b border-gray-800">
-        <TouchableOpacity
-          onPress={() => setActiveTab('upcoming')}
-          className={`flex-1 py-3 ${activeTab === 'upcoming' ? 'border-b-2 border-white' : ''}`}
-        >
-          <Text className={`text-center ${activeTab === 'upcoming' ? 'text-white font-bold' : 'text-gray-500'}`}>
-            Upcoming
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setActiveTab('ongoing')}
-          className={`flex-1 py-3 ${activeTab === 'ongoing' ? 'border-b-2 border-white' : ''}`}
-        >
-          <Text className={`text-center ${activeTab === 'ongoing' ? 'text-white font-bold' : 'text-gray-500'}`}>
-            Ongoing
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setActiveTab('history')}
-          className={`flex-1 py-3 ${activeTab === 'history' ? 'border-b-2 border-white' : ''}`}
-        >
-          <Text className={`text-center ${activeTab === 'history' ? 'text-white font-bold' : 'text-gray-500'}`}>
-            History
-          </Text>
-        </TouchableOpacity>
+      <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: C.border }}>
+        {['upcoming', 'ongoing', 'history'].map(tab => (
+          <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)} style={{ flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: activeTab === tab ? 2 : 0, borderBottomColor: activeTab === tab ? C.gold : 'transparent' }}>
+            <Text style={[T.bodySm, { fontWeight: activeTab === tab ? '700' : '500', color: activeTab === tab ? C.gold : C.textSecondary }]}>{tab.toUpperCase()}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
-
-      {loading && !refreshing ? (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#fff" />
-        </View>
-      ) : isEmpty ? (
-        <View className="flex-1 justify-center items-center">
-          <Ionicons name="calendar-outline" size={60} color="#444" />
-          <Text className="text-gray-500 text-base mt-3">
-            No {activeTab === 'upcoming' ? 'upcoming' : activeTab === 'ongoing' ? 'ongoing' : 'past'} bookings
-          </Text>
-        </View>
+      {loading && !refreshing ? <ActivityIndicator size="large" color={C.gold} style={{ marginTop: 40 }} /> : isEmpty ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Ionicons name="calendar-outline" size={60} color={C.textMuted} /><Text style={[T.bodyMd, { marginTop: 12 }]}>No {activeTab} bookings</Text></View>
       ) : (
-        <FlatList
-          data={data}
-          keyExtractor={(item, index) => item.id || index.toString()}
-          renderItem={renderBookingItem}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-        />
+        <FlatList data={data} keyExtractor={(item, idx) => item.id || idx.toString()} renderItem={renderItem} contentContainerStyle={{ paddingBottom: insets.bottom + 20 }} refreshing={refreshing} onRefresh={onRefresh} />
       )}
-
-      <DriverInfoModal
-        visible={driverModalVisible}
-        onClose={() => setDriverModalVisible(false)}
-        driverInfo={currentDriverInfo}
-      />
+      <DriverInfoModal visible={driverModalVisible} onClose={() => setDriverModalVisible(false)} driverInfo={currentDriverInfo} />
     </View>
   );
 }

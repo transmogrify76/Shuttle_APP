@@ -1,38 +1,66 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { C, T } from '../styles/design';
 
 export default function BusCard({ route, onSelect }) {
   return (
-    <View className="bg-card rounded-2xl p-4 mx-4 my-2 shadow-lg border border-border">
-      <View className="flex-row justify-between items-center mb-2">
-        <Text className="text-white font-bold text-base flex-1">{route.name}</Text>
-        <View className="flex-row items-center">
-          <Ionicons name="time-outline" size={14} color="#aaa" />
-          <Text className="text-gray-400 text-xs ml-1">{route.time}</Text>
+    <LinearGradient
+      colors={[C.surfaceUp, C.surface]}
+      style={{
+        borderRadius: 20,
+        marginHorizontal: 16,
+        marginVertical: 8,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: C.borderStrong,
+      }}
+    >
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <Text style={[T.bodyLg, { flex: 1 }]}>{route.name}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Ionicons name="time-outline" size={14} color={C.textMuted} />
+          <Text style={[T.bodySm, { marginLeft: 4 }]}>{route.time}</Text>
         </View>
       </View>
-      <Text className="text-gray-400 text-xs mb-3">{route.stops.join(' • ')}</Text>
-      <View className="flex-row justify-between">
-        {route.busType === 'ac' || route.busType === 'both' ? (
+      <Text style={[T.bodySm, { marginBottom: 12 }]}>{route.stops.join(' • ')}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        {(route.busType === 'ac' || route.busType === 'both') && (
           <TouchableOpacity
-            className="bg-gray-800 px-4 py-2 rounded-full flex-row items-center"
             onPress={() => onSelect(route, 'ac')}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: C.surfaceHigh,
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              borderRadius: 30,
+              gap: 6,
+            }}
           >
-            <Ionicons name="car-sport" size={16} color="#10b981" />
-            <Text className="text-primary text-sm ml-1">AC ₹{route.fare.ac}</Text>
+            <Ionicons name="car-sport" size={16} color={C.gold} />
+            <Text style={[T.bodySm, { color: C.gold }]}>AC ₹{route.fare.ac}</Text>
           </TouchableOpacity>
-        ) : null}
-        {route.busType === 'nonAc' || route.busType === 'both' ? (
+        )}
+        {(route.busType === 'nonAc' || route.busType === 'both') && (
           <TouchableOpacity
-            className="bg-gray-800 px-4 py-2 rounded-full flex-row items-center"
             onPress={() => onSelect(route, 'nonAc')}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: C.surfaceHigh,
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              borderRadius: 30,
+              gap: 6,
+            }}
           >
-            <Ionicons name="bus" size={16} color="#10b981" />
-            <Text className="text-primary text-sm ml-1">Non‑AC ₹{route.fare.nonAc}</Text>
+            <Ionicons name="bus" size={16} color={C.gold} />
+            <Text style={[T.bodySm, { color: C.gold }]}>Non‑AC ₹{route.fare.nonAc}</Text>
           </TouchableOpacity>
-        ) : null}
+        )}
       </View>
-    </View>
+    </LinearGradient>
   );
 }

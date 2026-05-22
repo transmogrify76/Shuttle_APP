@@ -1,4 +1,4 @@
-    import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Animated,
@@ -8,6 +8,7 @@ import {
   Text,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { C } from '../styles/design'; // assuming design tokens are imported
 
 const { height: screenHeight } = Dimensions.get('window');
 const BOTTOM_SHEET_HEIGHT = screenHeight * 0.65;
@@ -55,22 +56,26 @@ export default function AnimatedBottomSheet({ children, isVisible, onClose }) {
         left: 0,
         right: 0,
         height: BOTTOM_SHEET_HEIGHT,
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
+        backgroundColor: C.surface,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
         transform: [{ translateY }],
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
+        shadowColor: C.gold,
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
         elevation: 10,
+        borderTopWidth: 1,
+        borderLeftWidth: 1,
+        borderRightWidth: 1,
+        borderColor: C.borderStrong,
       }}
     >
       <View
         {...panResponder.panHandlers}
-        className="items-center pt-3 pb-2"
+        style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 6 }}
       >
-        <View className="w-10 h-1 bg-gray-300 rounded-full" />
+        <View style={{ width: 36, height: 4, backgroundColor: C.surfaceHigh, borderRadius: 2 }} />
       </View>
       {children}
     </Animated.View>

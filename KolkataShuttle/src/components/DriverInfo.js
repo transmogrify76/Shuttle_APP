@@ -1,101 +1,73 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { C, T } from '../styles/design';
 
-export default function DriverInfo({ name, extra }) {
+export default function DriverInfo({ name, rating, pickup, dropoff }) {
   return (
-    <View style={styles.container}>
-      <View style={styles.row}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{name.charAt(0)}</Text>
+    <LinearGradient
+      colors={[C.surfaceUp, C.surface]}
+      style={{
+        borderRadius: 24,
+        padding: 16,
+        marginVertical: 12,
+        borderWidth: 1,
+        borderColor: C.borderStrong,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+        <LinearGradient
+          colors={[C.goldDim, 'rgba(201,168,76,0.05)']}
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 12,
+            borderWidth: 1,
+            borderColor: 'rgba(201,168,76,0.3)',
+          }}
+        >
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: C.gold }}>
+            {name.charAt(0)}
+          </Text>
+        </LinearGradient>
+        <View style={{ flex: 1 }}>
+          <Text style={T.bodyMd}>{name}</Text>
+          {rating && <Text style={[T.bodySm, { marginTop: 2 }]}>{rating}</Text>}
         </View>
-        <View style={styles.info}>
-          <Text style={styles.name}>{name}</Text>
-          <Text style={styles.extra}>{extra}</Text>
-        </View>
-        <TouchableOpacity style={styles.messageButton}>
-          <Ionicons name="chatbubble-outline" size={20} color="#10b981" />
-          <Text style={styles.messageText}>Message</Text>
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: C.surfaceHigh,
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+            borderRadius: 20,
+            gap: 6,
+            borderWidth: 1,
+            borderColor: C.border,
+          }}
+        >
+          <Ionicons name="chatbubble-outline" size={16} color={C.gold} />
+          <Text style={[T.bodySm, { color: C.gold }]}>Message</Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.routeContainer}>
-        <Ionicons name="location" size={16} color="#10b981" />
-        <Text style={styles.routeText}>Shoppine, Baja City Mall – A. Arredondo Ave., Alamos, Oaxaca road</Text>
+
+      <View style={{ flexDirection: 'row', marginTop: 8, alignItems: 'flex-start' }}>
+        <Ionicons name="location" size={16} color={C.gold} style={{ marginTop: 2 }} />
+        <Text style={[T.bodySm, { flex: 1, marginLeft: 8, color: C.textSecondary }]}>
+          {pickup}
+        </Text>
       </View>
-      <View style={styles.routeContainer}>
-        <Ionicons name="navigate" size={16} color="#10b981" />
-        <Text style={styles.routeText}>Muralto Muhammad Airport – A. Arredondo Ave., Alamos, Oaxaca road</Text>
+      <View style={{ flexDirection: 'row', marginTop: 8, alignItems: 'flex-start' }}>
+        <Ionicons name="navigate" size={16} color={C.gold} style={{ marginTop: 2 }} />
+        <Text style={[T.bodySm, { flex: 1, marginLeft: 8, color: C.textSecondary }]}>
+          {dropoff}
+        </Text>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 16,
-    marginVertical: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#10b981',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  info: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1f2937',
-  },
-  extra: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  messageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  messageText: {
-    color: '#10b981',
-    fontSize: 14,
-    marginLeft: 4,
-  },
-  routeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  routeText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#4b5563',
-    marginLeft: 8,
-  },
-});

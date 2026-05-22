@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import { getRfidRecharges } from '../services/rfidApi';
+import { C, T } from '../styles/design';
 
 export default function RfidRechargeHistoryScreen() {
   const insets = useSafeAreaInsets();
@@ -36,24 +38,26 @@ export default function RfidRechargeHistoryScreen() {
   useEffect(() => { loadRecharges(); }, []);
 
   const renderItem = ({ item }) => (
-    <View className="bg-gray-900 rounded-xl p-4 mb-3 border border-gray-800">
-      <View className="flex-row justify-between items-center mb-2">
-        <Text className="text-white font-bold">₹{item.amount}</Text>
-        <View className={`px-2 py-1 rounded-full ${item.status === 'credited' ? 'bg-green-900' : 'bg-red-900'}`}>
-          <Text className="text-white text-xs font-bold uppercase">{item.status}</Text>
+    <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: C.border }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <Text style={[T.displayMd, { color: C.gold }]}>₹{item.amount}</Text>
+        <View style={{ backgroundColor: item.status === 'credited' ? C.greenDim : C.redDim, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+          <Text style={{ color: item.status === 'credited' ? C.green : C.red, fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' }}>{item.status}</Text>
         </View>
       </View>
-      <Text className="text-gray-400 text-xs">{new Date(item.created_at).toLocaleString()}</Text>
-      {item.credited_at && <Text className="text-gray-500 text-xs mt-1">Credited: {new Date(item.credited_at).toLocaleString()}</Text>}
-      {item.failed_at && <Text className="text-red-400 text-xs mt-1">Failed: {new Date(item.failed_at).toLocaleString()}</Text>}
-    </View>
+      <Text style={[T.bodySm, { color: C.textMuted }]}>{new Date(item.created_at).toLocaleString()}</Text>
+      {item.credited_at && <Text style={[T.bodySm, { marginTop: 4, color: C.textSecondary }]}>Credited: {new Date(item.credited_at).toLocaleString()}</Text>}
+      {item.failed_at && <Text style={[T.bodySm, { marginTop: 4, color: C.red }]}>Failed: {new Date(item.failed_at).toLocaleString()}</Text>}
+    </LinearGradient>
   );
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
       <Header title="Recharge History" />
-      {loading && !refreshing ? <ActivityIndicator size="large" color="#fff" /> : items.length === 0 ? (
-        <View className="flex-1 justify-center items-center"><Ionicons name="time-outline" size={60} color="#444" /><Text className="text-gray-500 mt-3">No recharges</Text></View>
+      {loading && !refreshing ? (
+        <ActivityIndicator size="large" color={C.gold} style={{ marginTop: 40 }} />
+      ) : items.length === 0 ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Ionicons name="time-outline" size={60} color={C.textMuted} /><Text style={[T.bodyMd, { marginTop: 12 }]}>No recharges</Text></View>
       ) : (
         <FlatList
           data={items}

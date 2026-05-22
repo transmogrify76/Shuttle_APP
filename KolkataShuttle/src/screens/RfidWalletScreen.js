@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import { getRfidSummary } from '../services/rfidApi';
+import { C, T } from '../styles/design';
 
 export default function RfidWalletScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -27,8 +29,8 @@ export default function RfidWalletScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-black justify-center items-center">
-        <ActivityIndicator size="large" color="#fff" />
+      <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={C.gold} />
       </View>
     );
   }
@@ -40,112 +42,93 @@ export default function RfidWalletScreen({ navigation }) {
   const currentRide = summary?.current_ride;
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
       <Header title="RFID Wallet" />
-      <ScrollView className="flex-1 px-4 pt-4">
+      <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
         {!hasCard ? (
-          <View className="bg-gray-900 rounded-xl p-5 items-center">
-            <Ionicons name="card-outline" size={48} color="#aaa" />
-            <Text className="text-white text-lg font-bold mt-3">No RFID Card Assigned</Text>
-            <Text className="text-gray-400 text-center mt-2">
-              Please contact support to get an RFID card linked to your account.
-            </Text>
-          </View>
+          <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 24, padding: 32, alignItems: 'center', borderWidth: 1, borderColor: C.border }}>
+            <Ionicons name="card-outline" size={56} color={C.textMuted} />
+            <Text style={[T.displayMd, { marginTop: 16 }]}>No RFID Card Assigned</Text>
+            <Text style={[T.bodySm, { textAlign: 'center', marginTop: 8, color: C.textSecondary }]}>Please contact support to get an RFID card linked to your account.</Text>
+          </LinearGradient>
         ) : (
           <>
             {/* Card & Balance Info */}
-            <View className="bg-gray-900 rounded-xl p-5 mb-4">
-              <View className="flex-row justify-between items-center mb-3">
-                <Text className="text-white text-sm font-semibold">RFID Card</Text>
-                <Text className="text-gray-400 text-xs">****{card.card_uid_masked}</Text>
+            <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: C.border }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Text style={[T.headingSm]}>RFID Card</Text>
+                <Text style={[T.bodySm, { color: C.textMuted }]}>****{card.card_uid_masked}</Text>
               </View>
-              <View className="flex-row justify-between items-center mb-2">
-                <Text className="text-gray-400 text-sm">Total Balance</Text>
-                <Text className="text-white text-xl font-bold">₹{account.current_balance}</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={[T.bodySm]}>Total Balance</Text>
+                <Text style={[T.displayMd, { color: C.gold }]}>₹{account.current_balance}</Text>
               </View>
-              <View className="flex-row justify-between items-center mb-2">
-                <Text className="text-gray-400 text-sm">Held Balance</Text>
-                <Text className="text-white text-base">₹{account.held_balance}</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={[T.bodySm]}>Held Balance</Text>
+                <Text style={[T.bodyMd]}>₹{account.held_balance}</Text>
               </View>
-              <View className="flex-row justify-between items-center pt-2 border-t border-gray-800">
-                <Text className="text-gray-400 text-sm font-semibold">Available Balance</Text>
-                <Text className="text-green-500 text-lg font-bold">₹{account.available_balance}</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: 1, borderTopColor: C.border }}>
+                <Text style={[T.headingSm]}>Available Balance</Text>
+                <Text style={{ fontSize: 20, fontWeight: 'bold', color: C.gold }}>₹{account.available_balance}</Text>
               </View>
-            </View>
+            </LinearGradient>
 
-            {/* Current RFID Ride (if any) */}
+            {/* Current RFID Ride */}
             {currentRide && (
-              <TouchableOpacity
-                onPress={() => navigation.navigate('RfidRideDetail', { rideId: currentRide.id })}
-                className="bg-gray-900 rounded-xl p-4 mb-4"
-              >
-                <Text className="text-white font-bold mb-1">Current RFID Ride</Text>
-                <Text className="text-gray-300 text-sm">
-                  Boarded at {currentRide.pickup_stop?.name} on {new Date(currentRide.boarded_at).toLocaleString()}
-                </Text>
-                <Text className="text-gray-400 text-xs mt-1">Tap for details</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('RfidRideDetail', { rideId: currentRide.id })} style={{ marginBottom: 16 }}>
+                <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 20, padding: 16, borderWidth: 1, borderColor: C.border }}>
+                  <Text style={[T.headingSm, { marginBottom: 4 }]}>Current RFID Ride</Text>
+                  <Text style={[T.bodySm, { color: C.textSecondary }]}>Boarded at {currentRide.pickup_stop?.name} on {new Date(currentRide.boarded_at).toLocaleString()}</Text>
+                  <Text style={[T.bodySm, { marginTop: 8, color: C.gold }]}>Tap for details →</Text>
+                </LinearGradient>
               </TouchableOpacity>
             )}
 
             {/* Action Buttons */}
-            <View className="flex-row flex-wrap justify-between mb-4">
-              <TouchableOpacity
-                onPress={() => navigation.navigate('RfidRecharge')}
-                className="bg-white rounded-xl p-3 flex-1 mr-2 items-center"
-              >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
+              <TouchableOpacity onPress={() => navigation.navigate('RfidRecharge')} style={{ flex: 1, marginRight: 8, backgroundColor: C.gold, borderRadius: 16, paddingVertical: 12, alignItems: 'center' }}>
                 <Ionicons name="add-circle-outline" size={24} color="#000" />
-                <Text className="text-black font-semibold mt-1">Recharge</Text>
+                <Text style={{ color: '#000', fontWeight: 'bold', marginTop: 4 }}>Recharge</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('RfidLedger')}
-                className="bg-gray-800 rounded-xl p-3 flex-1 mx-1 items-center"
-              >
-                <Ionicons name="receipt-outline" size={24} color="#fff" />
-                <Text className="text-white font-semibold mt-1">Ledger</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('RfidLedger')} style={{ flex: 1, marginHorizontal: 4, backgroundColor: C.surfaceUp, borderRadius: 16, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: C.border }}>
+                <Ionicons name="receipt-outline" size={24} color={C.gold} />
+                <Text style={{ color: C.textPrimary, fontWeight: 'bold', marginTop: 4 }}>Ledger</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('RfidRechargeHistory')}
-                className="bg-gray-800 rounded-xl p-3 flex-1 ml-2 items-center"
-              >
-                <Ionicons name="time-outline" size={24} color="#fff" />
-                <Text className="text-white font-semibold mt-1">Recharges</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('RfidRechargeHistory')} style={{ flex: 1, marginLeft: 8, backgroundColor: C.surfaceUp, borderRadius: 16, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: C.border }}>
+                <Ionicons name="time-outline" size={24} color={C.gold} />
+                <Text style={{ color: C.textPrimary, fontWeight: 'bold', marginTop: 4 }}>Recharges</Text>
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              onPress={() => navigation.navigate('RfidRides')}
-              className="bg-gray-800 rounded-xl p-3 mb-4 items-center"
-            >
-              <Ionicons name="bus-outline" size={24} color="#fff" />
-              <Text className="text-white font-semibold mt-1">RFID Ride History</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('RfidRides')} style={{ marginBottom: 16, backgroundColor: C.surfaceUp, borderRadius: 16, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: C.border }}>
+              <Ionicons name="bus-outline" size={24} color={C.gold} />
+              <Text style={{ color: C.textPrimary, fontWeight: 'bold', marginTop: 4 }}>RFID Ride History</Text>
             </TouchableOpacity>
 
-            {/* Recent activity preview */}
+            {/* Recent Ledger Entries */}
             {summary.recent_ledger_entries?.length > 0 && (
-              <View className="mt-2">
-                <Text className="text-white font-bold mb-2">Recent Wallet Activity</Text>
+              <View style={{ marginTop: 8 }}>
+                <Text style={[T.headingSm, { marginBottom: 12 }]}>Recent Wallet Activity</Text>
                 {summary.recent_ledger_entries.slice(0, 3).map((entry, idx) => (
-                  <View key={idx} className="bg-gray-900 rounded-lg p-3 mb-2">
-                    <View className="flex-row justify-between">
-                      <Text className="text-white text-sm">{entry.entry_type.replace('_', ' ')}</Text>
-                      <Text className="text-gray-400 text-xs">{new Date(entry.created_at).toLocaleDateString()}</Text>
+                  <LinearGradient key={idx} colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 16, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: C.border }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={[T.bodySm, { fontWeight: 'bold', textTransform: 'capitalize' }]}>{entry.entry_type.replace('_', ' ')}</Text>
+                      <Text style={[T.bodySm, { color: C.textMuted }]}>{new Date(entry.created_at).toLocaleDateString()}</Text>
                     </View>
-                    <View className="flex-row justify-between mt-1">
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
                       {entry.amount_delta !== '0.00' && (
-                        <Text className={entry.amount_delta > 0 ? 'text-green-500' : 'text-red-500'}>
-                          {entry.amount_delta > 0 ? `+₹${entry.amount_delta}` : `-₹${Math.abs(entry.amount_delta)}`}
+                        <Text style={{ color: parseFloat(entry.amount_delta) > 0 ? C.green : C.red }}>
+                          {parseFloat(entry.amount_delta) > 0 ? `+₹${entry.amount_delta}` : `-₹${Math.abs(parseFloat(entry.amount_delta))}`}
                         </Text>
                       )}
                       {entry.held_delta !== '0.00' && (
-                        <Text className="text-yellow-500">
-                          Hold {entry.held_delta > 0 ? `+₹${entry.held_delta}` : `-₹${Math.abs(entry.held_delta)}`}
-                        </Text>
+                        <Text style={{ color: C.gold }}>Hold {parseFloat(entry.held_delta) > 0 ? `+₹${entry.held_delta}` : `-₹${Math.abs(parseFloat(entry.held_delta))}`}</Text>
                       )}
                     </View>
-                  </View>
+                  </LinearGradient>
                 ))}
-                <TouchableOpacity onPress={() => navigation.navigate('RfidLedger')} className="mt-1">
-                  <Text className="text-primary text-sm text-center">View all →</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('RfidLedger')} style={{ marginTop: 4 }}>
+                  <Text style={{ color: C.gold, textAlign: 'center', fontSize: 12 }}>View all →</Text>
                 </TouchableOpacity>
               </View>
             )}

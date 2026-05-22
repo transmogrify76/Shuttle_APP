@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -22,15 +23,15 @@ import {
   uploadProfilePicture,
 } from '../services/profileApi';
 import { API_BASE_URL } from '../config/api';
+import { C, T } from '../styles/design';
 
-// Helper to get full image URL from relative path
 const getImageUrl = (path) => {
   if (!path) return null;
   if (path.startsWith('http')) return path;
   return `${API_BASE_URL}${path}`;
 };
 
-export default function ProfileScreen({ navigation }) {  // ← added navigation prop
+export default function ProfileScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
 
@@ -65,29 +66,25 @@ export default function ProfileScreen({ navigation }) {  // ← added navigation
     }
   };
 
- const handleCreateProfile = async () => {
-  if (!initialName.trim()) {
-    Alert.alert('Error', 'Please enter your full name');
-    return;
-  }
-  setCreating(true);
-  try {
-    const result = await createProfile(initialName);
-    setProfile(result.profile);
-    setNewName(result.profile.full_name);
-    setCreateModalVisible(false);
-    Alert.alert('Success', 'Profile created successfully');
-    // After profile creation, navigate to the main app
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'MainTabs' }],
-    });
-  } catch (error) {
-    Alert.alert('Error', error.message);
-  } finally {
-    setCreating(false);
-  }
-};
+  const handleCreateProfile = async () => {
+    if (!initialName.trim()) {
+      Alert.alert('Error', 'Please enter your full name');
+      return;
+    }
+    setCreating(true);
+    try {
+      const result = await createProfile(initialName);
+      setProfile(result.profile);
+      setNewName(result.profile.full_name);
+      setCreateModalVisible(false);
+      Alert.alert('Success', 'Profile created successfully');
+      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const handleUpdateName = async () => {
     if (!newName.trim()) return;
@@ -110,17 +107,13 @@ export default function ProfileScreen({ navigation }) {  // ← added navigation
       Alert.alert('Permission needed', 'Please allow access to your photos');
       return;
     }
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
     });
-
-    if (!result.canceled) {
-      uploadImage(result.assets[0].uri);
-    }
+    if (!result.canceled) uploadImage(result.assets[0].uri);
   };
 
   const takePhoto = async () => {
@@ -129,16 +122,12 @@ export default function ProfileScreen({ navigation }) {  // ← added navigation
       Alert.alert('Permission needed', 'Please allow access to your camera');
       return;
     }
-
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
     });
-
-    if (!result.canceled) {
-      uploadImage(result.assets[0].uri);
-    }
+    if (!result.canceled) uploadImage(result.assets[0].uri);
   };
 
   const uploadImage = async (uri) => {
@@ -174,142 +163,104 @@ export default function ProfileScreen({ navigation }) {  // ← added navigation
     { icon: 'settings-outline', label: 'Settings' },
     { icon: 'receipt-outline', label: 'Transaction History', onPress: () => navigation.navigate('Transactions') },
     { icon: 'chatbubble-outline', label: 'Support', onPress: () => navigation.navigate('SupportTickets') },
-    { icon: 'log-out-outline', label: 'Logout', color: '#ef4444', onPress: logout },
-    
+    { icon: 'log-out-outline', label: 'Logout', color: C.red, onPress: logout },
   ];
 
   if (loading) {
     return (
-      <View className="flex-1 bg-black justify-center items-center">
-        <ActivityIndicator size="large" color="#fff" />
+      <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={C.gold} />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
       <Header title="Profile" />
       <ScrollView>
-        <View className="items-center py-6 border-b border-gray-800">
+        <View style={{ alignItems: 'center', paddingVertical: 24, borderBottomWidth: 1, borderBottomColor: C.border }}>
           <TouchableOpacity onPress={showImageOptions} disabled={uploading}>
-            <View className="relative">
+            <View style={{ position: 'relative' }}>
               {profile?.profile_picture_path ? (
-                <Image
-                  source={{ uri: getImageUrl(profile.profile_picture_path) }}
-                  className="w-24 h-24 rounded-full"
-                  onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
-                />
+                <Image source={{ uri: getImageUrl(profile.profile_picture_path) }} style={{ width: 96, height: 96, borderRadius: 48 }} />
               ) : (
-                <View className="w-24 h-24 rounded-full bg-gray-800 items-center justify-center">
-                  <Text className="text-white text-4xl font-bold">
-                    {profile?.full_name?.charAt(0).toUpperCase() || 'U'}
-                  </Text>
-                </View>
+                <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border }}>
+                  <Text style={{ fontSize: 36, fontWeight: 'bold', color: C.gold }}>{profile?.full_name?.charAt(0).toUpperCase() || 'U'}</Text>
+                </LinearGradient>
               )}
               {uploading && (
-                <View className="absolute inset-0 bg-black/50 rounded-full items-center justify-center">
-                  <ActivityIndicator size="small" color="#fff" />
+                <View style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 48, alignItems: 'center', justifyContent: 'center' }}>
+                  <ActivityIndicator size="small" color={C.gold} />
                 </View>
               )}
-              <View className="absolute bottom-0 right-0 bg-white rounded-full p-1">
-                <Ionicons name="camera" size={16} color="#000" />
+              <View style={{ position: 'absolute', bottom: 0, right: 0, backgroundColor: C.gold, borderRadius: 20, padding: 4 }}>
+                <Ionicons name="camera" size={14} color="#000" />
               </View>
             </View>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setEditModalVisible(true)} className="mt-3 flex-row items-center">
-            <Text className="text-white text-xl font-bold">{profile?.full_name || 'User'}</Text>
-            <Ionicons name="pencil" size={18} color="#aaa" className="ml-2" />
+          <TouchableOpacity onPress={() => setEditModalVisible(true)} style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+            <Text style={[T.displayMd, { marginRight: 6 }]}>{profile?.full_name || 'User'}</Text>
+            <Ionicons name="pencil" size={16} color={C.textMuted} />
           </TouchableOpacity>
-          <Text className="text-gray-400 text-sm mt-1">{user?.email}</Text>
+          <Text style={[T.bodySm, { marginTop: 4, color: C.textSecondary }]}>{user?.email}</Text>
         </View>
 
-        <View className="mt-4 px-4">
+        <View style={{ marginTop: 16, paddingHorizontal: 16 }}>
           {menuItems.map((item, idx) => (
             <TouchableOpacity
               key={idx}
-              className="flex-row items-center py-4 border-b border-gray-800"
               onPress={item.onPress}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.border }}
             >
-              <Ionicons name={item.icon} size={24} color={item.color || '#fff'} />
-              <Text className={`flex-1 text-base ml-3 ${item.color ? 'text-red-500' : 'text-white'}`}>
-                {item.label}
-              </Text>
-              <Ionicons name="chevron-forward" size={20} color="#555" />
+              <Ionicons name={item.icon} size={24} color={item.color || C.gold} />
+              <Text style={[T.bodyMd, { flex: 1, marginLeft: 12, color: item.color || C.textPrimary }]}>{item.label}</Text>
+              <Ionicons name="chevron-forward" size={18} color={C.textMuted} />
             </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
 
       {/* Edit Name Modal */}
-      <Modal
-        visible={editModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setEditModalVisible(false)}
-      >
-        <View className="flex-1 bg-black/50 justify-center items-center px-5">
-          <View className="bg-white rounded-2xl p-5 w-full">
-            <Text className="text-black text-xl font-bold mb-4">Edit Name</Text>
+      <Modal visible={editModalVisible} transparent animationType="fade" onRequestClose={() => setEditModalVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 }}>
+          <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 24, padding: 20, width: '100%', borderWidth: 1, borderColor: C.border }}>
+            <Text style={[T.displayMd, { marginBottom: 16 }]}>Edit Name</Text>
             <TextInput
-              className="border border-gray-300 rounded-xl p-3 text-base text-black mb-4"
+              style={{ backgroundColor: C.surfaceHigh, borderRadius: 14, padding: 12, color: C.textPrimary, marginBottom: 20, borderWidth: 1, borderColor: C.border }}
               value={newName}
               onChangeText={setNewName}
               placeholder="Your full name"
-              placeholderTextColor="#999"
+              placeholderTextColor={C.textMuted}
             />
-            <View className="flex-row justify-end space-x-3">
-              <TouchableOpacity
-                onPress={() => setEditModalVisible(false)}
-                className="px-4 py-2 rounded-lg"
-              >
-                <Text className="text-gray-600">Cancel</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)} style={{ paddingHorizontal: 16, paddingVertical: 8, marginRight: 12 }}>
+                <Text style={{ color: C.textMuted }}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleUpdateName}
-                disabled={updatingName}
-                className="bg-black px-4 py-2 rounded-lg"
-              >
-                {updatingName ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text className="text-white font-bold">Save</Text>
-                )}
+              <TouchableOpacity onPress={handleUpdateName} disabled={updatingName} style={{ backgroundColor: C.gold, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 12 }}>
+                {updatingName ? <ActivityIndicator size="small" color="#000" /> : <Text style={{ color: '#000', fontWeight: 'bold' }}>Save</Text>}
               </TouchableOpacity>
             </View>
-          </View>
+          </LinearGradient>
         </View>
       </Modal>
 
-      {/* Create Profile Modal (first time) */}
-      <Modal
-        visible={createModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {}}
-      >
-        <View className="flex-1 bg-black/50 justify-center items-center px-5">
-          <View className="bg-white rounded-2xl p-5 w-full">
-            <Text className="text-black text-xl font-bold mb-4">Complete Your Profile</Text>
-            <Text className="text-gray-600 mb-4">Please enter your full name to continue.</Text>
+      {/* Create Profile Modal */}
+      <Modal visible={createModalVisible} transparent animationType="fade" onRequestClose={() => {}}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 }}>
+          <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 24, padding: 20, width: '100%', borderWidth: 1, borderColor: C.border }}>
+            <Text style={[T.displayMd, { marginBottom: 12 }]}>Complete Your Profile</Text>
+            <Text style={[T.bodySm, { marginBottom: 20, color: C.textSecondary }]}>Please enter your full name to continue.</Text>
             <TextInput
-              className="border border-gray-300 rounded-xl p-3 text-base text-black mb-4"
+              style={{ backgroundColor: C.surfaceHigh, borderRadius: 14, padding: 12, color: C.textPrimary, marginBottom: 20, borderWidth: 1, borderColor: C.border }}
               value={initialName}
               onChangeText={setInitialName}
               placeholder="Full name"
-              placeholderTextColor="#999"
+              placeholderTextColor={C.textMuted}
             />
-            <TouchableOpacity
-              onPress={handleCreateProfile}
-              disabled={creating}
-              className="bg-black py-3 rounded-full items-center"
-            >
-              {creating ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text className="text-white font-bold text-base">Create Profile</Text>
-              )}
+            <TouchableOpacity onPress={handleCreateProfile} disabled={creating} style={{ backgroundColor: C.gold, borderRadius: 30, paddingVertical: 12, alignItems: 'center' }}>
+              {creating ? <ActivityIndicator size="small" color="#000" /> : <Text style={{ color: '#000', fontWeight: 'bold' }}>Create Profile</Text>}
             </TouchableOpacity>
-          </View>
+          </LinearGradient>
         </View>
       </Modal>
     </View>

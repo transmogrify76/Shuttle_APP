@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import { getSupportTicket } from '../services/supportApi';
+import { C, T } from '../styles/design';
 
 export default function TicketDetailScreen({ route, navigation }) {
   const { ticketId } = route.params;
@@ -30,58 +32,52 @@ export default function TicketDetailScreen({ route, navigation }) {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending': return 'text-yellow-500';
-      case 'resolved': return 'text-green-500';
-      case 'rejected': return 'text-red-500';
-      default: return 'text-gray-500';
+      case 'pending': return C.gold;
+      case 'resolved': return C.green;
+      case 'rejected': return C.red;
+      default: return C.textMuted;
     }
   };
 
   if (loading) {
     return (
-      <View className="flex-1 bg-black justify-center items-center">
-        <ActivityIndicator size="large" color="#fff" />
+      <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={C.gold} />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
-      <Header title="Ticket Details" />
-      <ScrollView className="flex-1 px-5 pt-5">
-        <View className="bg-gray-900 rounded-2xl p-5 mb-4">
-          <Text className="text-white text-lg font-bold mb-2">{ticket.subject}</Text>
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className={`font-bold ${getStatusColor(ticket.status)} uppercase`}>
-              {ticket.status}
-            </Text>
-            <Text className="text-gray-400 text-xs">
-              {new Date(ticket.created_at).toLocaleString()}
-            </Text>
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
+      <Header title="Ticket Details" showBack />
+      <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
+        <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: C.border }}>
+          <Text style={[T.displayMd, { marginBottom: 8 }]}>{ticket.subject}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Text style={{ color: getStatusColor(ticket.status), fontWeight: 'bold', textTransform: 'uppercase' }}>{ticket.status}</Text>
+            <Text style={[T.bodySm, { color: C.textMuted }]}>{new Date(ticket.created_at).toLocaleString()}</Text>
           </View>
-          <Text className="text-gray-300 text-base leading-6">{ticket.description}</Text>
+          <Text style={[T.bodyMd, { marginBottom: 12 }]}>{ticket.description}</Text>
           {ticket.attachment_path && (
-            <TouchableOpacity className="mt-4 flex-row items-center">
-              <Ionicons name="attach-outline" size={20} color="#aaa" />
-              <Text className="text-gray-400 ml-2">Attachment available</Text>
+            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+              <Ionicons name="attach-outline" size={18} color={C.textSecondary} />
+              <Text style={[T.bodySm, { marginLeft: 6, color: C.textSecondary }]}>Attachment available</Text>
             </TouchableOpacity>
           )}
-        </View>
+        </LinearGradient>
 
         {ticket.resolved_at && (
-          <View className="bg-gray-900 rounded-2xl p-4">
-            <Text className="text-white text-sm">Resolved on</Text>
-            <Text className="text-gray-300 text-sm">
-              {new Date(ticket.resolved_at).toLocaleString()}
-            </Text>
-          </View>
+          <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: C.border }}>
+            <Text style={[T.headingSm, { marginBottom: 4 }]}>Resolved on</Text>
+            <Text style={[T.bodyMd]}>{new Date(ticket.resolved_at).toLocaleString()}</Text>
+          </LinearGradient>
         )}
 
         {ticket.rejection_reason && (
-          <View className="bg-red-900/20 rounded-2xl p-4 mt-4 border border-red-800">
-            <Text className="text-red-400 font-bold mb-1">Rejection reason</Text>
-            <Text className="text-red-300 text-sm">{ticket.rejection_reason}</Text>
-          </View>
+          <LinearGradient colors={[C.redDim, C.redDim]} style={{ borderRadius: 24, padding: 20, borderWidth: 1, borderColor: C.red }}>
+            <Text style={{ color: C.red, fontWeight: 'bold', marginBottom: 4 }}>Rejection reason</Text>
+            <Text style={{ color: C.textSecondary }}>{ticket.rejection_reason}</Text>
+          </LinearGradient>
         )}
       </ScrollView>
     </View>

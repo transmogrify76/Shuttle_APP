@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import CustomButton from '../components/CustomButton';
 import RazorpayWebView from '../components/RazorpayWebView';
@@ -9,17 +10,12 @@ import BusSeatMap from '../components/BusSeatMap';
 import { useAuth } from '../context/AuthContext';
 import { useSeatmap } from '../context/SeatmapContext';
 import { createBooking, verifyBookingPayment, getLegAvailableSeats, getDriverVehicleInfo } from '../services/bookingApi';
+import { C, T } from '../styles/design';
 
 export default function SeatSelectionScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const {
-    scheduledTrip,
-    pickupStopId,
-    dropoffStopId,
-    fareAmount,
-    routeName,
-  } = route.params;
+  const { scheduledTrip, pickupStopId, dropoffStopId, fareAmount, routeName } = route.params;
 
   const [selectedSeat, setSelectedSeat] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -35,7 +31,6 @@ export default function SeatSelectionScreen({ route, navigation }) {
 
   const { seatmapData, subscribe, refresh, unsubscribe } = useSeatmap();
 
-  // Fetch initial seat data via REST and subscribe to WebSocket
   useEffect(() => {
     const fetchInitial = async () => {
       try {
@@ -56,27 +51,16 @@ export default function SeatSelectionScreen({ route, navigation }) {
     };
     fetchInitial();
 
-    // Subscribe to WebSocket for live updates
-    const topic = {
-      scheduled_trip_id: scheduledTrip.id,
-      route_id: scheduledTrip.route_id,
-      pickup_stop_id: pickupStopId,
-      dropoff_stop_id: dropoffStopId,
-    };
+    const topic = { scheduled_trip_id: scheduledTrip.id, route_id: scheduledTrip.route_id, pickup_stop_id: pickupStopId, dropoff_stop_id: dropoffStopId };
     subscribe(topic);
-
-    return () => {
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, []);
 
-  // Update from WebSocket snapshot
   useEffect(() => {
     if (seatmapData) {
       setSeatCapacity(seatmapData.seat_capacity);
       setOccupiedSeatsList(seatmapData.occupied_seat_numbers || []);
       setTripBookable(seatmapData.trip_bookable);
-      // If selected seat is no longer available, clear selection
       if (selectedSeat && seatmapData.occupied_seat_numbers.includes(selectedSeat)) {
         setSelectedSeat(null);
         Alert.alert('Seat no longer available', 'Please select another seat');
@@ -84,20 +68,11 @@ export default function SeatSelectionScreen({ route, navigation }) {
     }
   }, [seatmapData]);
 
-  const handleSeatSelect = (seatNumber) => {
-    setSelectedSeat(seatNumber);
-  };
+  const handleSeatSelect = (seatNumber) => setSelectedSeat(seatNumber);
 
   const handleConfirm = async () => {
-    if (!selectedSeat) {
-      Alert.alert('No seat selected', 'Please select a seat');
-      return;
-    }
-    if (!tripBookable) {
-      Alert.alert('Trip not bookable', 'This trip is not available for booking right now');
-      return;
-    }
-
+    if (!selectedSeat) { Alert.alert('No seat selected', 'Please select a seat'); return; }
+    if (!tripBookable) { Alert.alert('Trip not bookable', 'This trip is not available for booking'); return; }
     setLoading(true);
     try {
       const { booking, payment_order } = await createBooking({
@@ -109,16 +84,16 @@ export default function SeatSelectionScreen({ route, navigation }) {
       setCurrentBooking(booking);
       setCurrentPaymentOrder(payment_order);
       setPaymentModalVisible(true);
-    } catch (error) {
-      if (error.message?.includes('duplicate_booking')) {
+    } catch (err) {
+      if (err.message?.includes('duplicate_booking')) {
         Alert.alert('Already Booked', 'You already have a booking for this trip.');
         navigation.goBack();
-      } else if (error.message?.includes('seat_unavailable')) {
+      } else if (err.message?.includes('seat_unavailable')) {
         Alert.alert('Seat taken', 'That seat is no longer available. Please choose another.');
-        refresh(); // manually refresh seatmap
+        refresh();
         setSelectedSeat(null);
       } else {
-        Alert.alert('Error', error.message || 'Booking failed');
+        Alert.alert('Error', err.message || 'Booking failed');
       }
     } finally {
       setLoading(false);
@@ -141,16 +116,13 @@ export default function SeatSelectionScreen({ route, navigation }) {
         fare: fareAmount,
         otp: currentBooking.otp,
       });
-    } catch (error) {
-      Alert.alert('Error', error.message || 'Payment verification failed');
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Payment verification failed');
       setPaymentModalVisible(false);
     }
   };
 
-  const handlePaymentError = (errorMsg) => {
-    Alert.alert('Payment Error', errorMsg || 'Payment failed');
-    setPaymentModalVisible(false);
-  };
+  const handlePaymentError = (msg) => { Alert.alert('Payment Error', msg); setPaymentModalVisible(false); };
 
   const paymentOrderData = currentPaymentOrder ? {
     key: currentPaymentOrder.razorpay_key_id,
@@ -162,85 +134,58 @@ export default function SeatSelectionScreen({ route, navigation }) {
     prefill: { email: user?.email, contact: user?.phone || '', name: user?.full_name || '' },
   } : null;
 
-  if (infoLoading) {
-    return (
-      <View className="flex-1 bg-black justify-center items-center">
-        <ActivityIndicator size="large" color="#fff" />
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View className="flex-1 bg-black justify-center items-center p-5">
-        <Ionicons name="alert-circle-outline" size={60} color="#ef4444" />
-        <Text className="text-white text-center mt-4">{error}</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} className="mt-6 bg-white px-6 py-2 rounded-full">
-          <Text className="text-black font-bold">Go Back</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  if (infoLoading) return <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color={C.gold} /></View>;
+  if (error) return (
+    <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+      <Ionicons name="alert-circle-outline" size={60} color={C.red} />
+      <Text style={[T.bodyMd, { marginTop: 16, color: C.textSecondary }]}>{error}</Text>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 24, backgroundColor: C.gold, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 30 }}><Text style={{ color: '#000', fontWeight: 'bold' }}>Go Back</Text></TouchableOpacity>
+    </View>
+  );
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
-      <Header title="Select Seats" />
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
+      <Header title="Select Seats" showBack />
       <ScrollView>
-        <View className="p-5 border-b border-gray-800">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-white text-xl font-bold">{routeName}</Text>
-            {scheduledTrip.route?.has_ac && (
-              <View className="px-2 py-1 rounded-full bg-gray-800">
-                <Text className="text-white text-xs font-bold">AC</Text>
-              </View>
-            )}
+        <View style={{ padding: 20, borderBottomWidth: 1, borderBottomColor: C.border }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={T.displayMd}>{routeName}</Text>
+            {scheduledTrip.route?.has_ac && <View style={{ backgroundColor: C.goldDim, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}><Text style={{ color: C.gold, fontSize: 10, fontWeight: 'bold' }}>AC</Text></View>}
           </View>
-          <Text className="text-gray-400 text-sm mt-1">{new Date(scheduledTrip.planned_start_at).toLocaleString()}</Text>
+          <Text style={[T.bodySm, { marginTop: 4 }]}>{new Date(scheduledTrip.planned_start_at).toLocaleString()}</Text>
         </View>
 
         {driverInfo && (
-          <View className="mx-5 mt-4 bg-gray-900 rounded-2xl p-4 border border-gray-800">
-            <Text className="text-white font-bold mb-2">Driver & Vehicle</Text>
-            <View className="flex-row items-center mb-2">
-              <Ionicons name="person-circle-outline" size={20} color="#aaa" />
-              <Text className="text-gray-300 ml-2">Driver: {driverInfo.driver_name || 'N/A'}</Text>
+          <View style={{ margin: 20, padding: 16, backgroundColor: C.surfaceUp, borderRadius: 20, borderWidth: 1, borderColor: C.border }}>
+            <Text style={[T.headingSm, { marginBottom: 12 }]}>Driver & Vehicle</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+              <LinearGradient colors={[C.goldDim, 'rgba(201,168,76,0.05)']} style={{ width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                <Ionicons name="person" size={22} color={C.gold} />
+              </LinearGradient>
+              <View><Text style={T.bodyMd}>{driverInfo.driver_name || 'N/A'}</Text><Text style={T.bodySm}>{driverInfo.driver_average_rating ? `${driverInfo.driver_average_rating.toFixed(1)} (${driverInfo.driver_rating_count})` : 'New driver'}</Text></View>
             </View>
-            <View className="flex-row items-center mb-2">
-              <Ionicons name="star" size={16} color="#fbbf24" />
-              <Text className="text-gray-300 ml-1">
-                {driverInfo.driver_average_rating ? `${driverInfo.driver_average_rating.toFixed(1)} (${driverInfo.driver_rating_count} ratings)` : 'New driver'}
-              </Text>
-            </View>
-            <View className="flex-row items-center mb-1">
-              <Ionicons name="car-outline" size={20} color="#aaa" />
-              <Text className="text-gray-300 ml-2">{driverInfo.vehicle_name || 'Bus'} • {driverInfo.vehicle_registration_number || ''}</Text>
-            </View>
-            <Text className="text-gray-400 text-xs ml-7">Total seats: {seatCapacity}</Text>
+            <Text style={T.bodySm}>{driverInfo.vehicle_name || 'Bus'} • {driverInfo.vehicle_registration_number || ''}</Text>
+            <Text style={T.bodySm}>Total seats: {seatCapacity}</Text>
           </View>
         )}
 
-        <View className="mx-5 mt-6">
-          <Text className="text-white text-lg font-semibold mb-3">Select a seat</Text>
-          <BusSeatMap
-            seatCapacity={seatCapacity}
-            occupiedSeats={occupiedSeatsList}
-            selectedSeat={selectedSeat}
-            onSeatSelect={handleSeatSelect}
-          />
+        <View style={{ marginHorizontal: 20, marginVertical: 10 }}>
+          <Text style={[T.headingSm, { marginBottom: 12 }]}>Select a seat</Text>
+          <BusSeatMap seatCapacity={seatCapacity} occupiedSeats={occupiedSeatsList} selectedSeat={selectedSeat} onSeatSelect={handleSeatSelect} />
         </View>
 
-        <View className="bg-gray-900 mx-5 my-3 p-5 rounded-2xl">
-          <View className="flex-row justify-between mb-2">
-            <Text className="text-gray-400">Selected seat</Text>
-            <Text className="text-white font-medium">{selectedSeat || 'None'}</Text>
+        <View style={{ margin: 20, padding: 16, backgroundColor: C.surfaceUp, borderRadius: 20, borderWidth: 1, borderColor: C.border }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+            <Text style={T.bodySm}>Selected seat</Text>
+            <Text style={T.bodyMd}>{selectedSeat || 'None'}</Text>
           </View>
-          <View className="flex-row justify-between mb-2">
-            <Text className="text-gray-400">Fare</Text>
-            <Text className="text-white font-medium">₹{fareAmount}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+            <Text style={T.bodySm}>Fare</Text>
+            <Text style={T.bodyMd}>₹{fareAmount}</Text>
           </View>
-          <View className="flex-row justify-between mt-2 pt-2 border-t border-gray-800">
-            <Text className="text-white font-bold text-lg">Total</Text>
-            <Text className="text-green-500 font-bold text-lg">₹{fareAmount}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: C.border }}>
+            <Text style={T.bodyLg}>Total</Text>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: C.gold }}>₹{fareAmount}</Text>
           </View>
         </View>
 
@@ -248,20 +193,11 @@ export default function SeatSelectionScreen({ route, navigation }) {
           title={loading ? 'Processing...' : `Confirm & Pay ₹${fareAmount}`}
           onPress={handleConfirm}
           disabled={loading || !selectedSeat || !tripBookable}
-          className="mx-5 mb-6"
-          buttonColor="#fff"
-          textColor="#000"
+          style={{ marginHorizontal: 20, marginBottom: 30 }}
+          buttonColor="gold"
         />
       </ScrollView>
-      {paymentOrderData && (
-        <RazorpayWebView
-          visible={paymentModalVisible}
-          onClose={() => setPaymentModalVisible(false)}
-          onSuccess={handlePaymentSuccess}
-          onError={handlePaymentError}
-          orderData={paymentOrderData}
-        />
-      )}
+      {paymentOrderData && <RazorpayWebView visible={paymentModalVisible} onClose={() => setPaymentModalVisible(false)} onSuccess={handlePaymentSuccess} onError={handlePaymentError} orderData={paymentOrderData} />}
     </View>
   );
 }

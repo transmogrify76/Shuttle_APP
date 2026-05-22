@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import { listSupportTickets } from '../services/supportApi';
+import { C, T } from '../styles/design';
 
 export default function SupportTicketsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -28,57 +30,63 @@ export default function SupportTicketsScreen({ navigation }) {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-500';
-      case 'resolved': return 'bg-green-500';
-      case 'rejected': return 'bg-red-500';
-      default: return 'bg-gray-500';
+      case 'pending': return C.goldDim;
+      case 'resolved': return C.greenDim;
+      case 'rejected': return C.redDim;
+      default: return C.surfaceHigh;
+    }
+  };
+  const getStatusTextColor = (status) => {
+    switch (status) {
+      case 'pending': return C.gold;
+      case 'resolved': return C.green;
+      case 'rejected': return C.red;
+      default: return C.textMuted;
     }
   };
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity
-      onPress={() => navigation.navigate('TicketDetail', { ticketId: item.id })}
-      className="bg-gray-900 rounded-xl p-4 mb-3 mx-4 border border-gray-800"
-    >
-      <View className="flex-row justify-between items-center mb-2">
-        <Text className="text-white font-bold text-base flex-1">{item.subject}</Text>
-        <View className={`px-3 py-1 rounded-full ${getStatusColor(item.status)}`}>
-          <Text className="text-white text-xs font-bold uppercase">{item.status}</Text>
+    <TouchableOpacity onPress={() => navigation.navigate('TicketDetail', { ticketId: item.id })} activeOpacity={0.8}>
+      <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 20, padding: 16, marginHorizontal: 16, marginBottom: 12, borderWidth: 1, borderColor: C.border }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <Text style={[T.bodyMd, { flex: 1 }]}>{item.subject}</Text>
+          <View style={{ backgroundColor: getStatusColor(item.status), paddingHorizontal: 10, paddingVertical: 4, borderRadius: 16 }}>
+            <Text style={{ color: getStatusTextColor(item.status), fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' }}>{item.status}</Text>
+          </View>
         </View>
-      </View>
-      <Text className="text-gray-400 text-sm" numberOfLines={2}>{item.description}</Text>
-      <Text className="text-gray-500 text-xs mt-2">
-        {new Date(item.created_at).toLocaleDateString()}
-      </Text>
+        <Text style={[T.bodySm, { marginBottom: 6 }]} numberOfLines={2}>{item.description}</Text>
+        <Text style={[T.bodySm, { color: C.textMuted }]}>{new Date(item.created_at).toLocaleDateString()}</Text>
+      </LinearGradient>
     </TouchableOpacity>
   );
 
   if (loading) {
     return (
-      <View className="flex-1 bg-black justify-center items-center">
-        <ActivityIndicator size="large" color="#fff" />
+      <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={C.gold} />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
       <Header title="Support Tickets" />
       <TouchableOpacity
         onPress={() => navigation.navigate('CreateTicket')}
-        className="absolute bottom-6 right-6 bg-white rounded-full p-3 shadow-lg z-10"
+        style={{
+          position: 'absolute', bottom: insets.bottom + 20, right: 20,
+          backgroundColor: C.gold, borderRadius: 30, padding: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 5,
+          zIndex: 10,
+        }}
       >
         <Ionicons name="add" size={24} color="#000" />
       </TouchableOpacity>
       {tickets.length === 0 ? (
-        <View className="flex-1 justify-center items-center">
-          <Ionicons name="chatbubble-outline" size={60} color="#444" />
-          <Text className="text-gray-500 text-base mt-3">No support tickets yet</Text>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('CreateTicket')}
-            className="mt-4 bg-white px-6 py-2 rounded-full"
-          >
-            <Text className="text-black font-bold">Create New Ticket</Text>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Ionicons name="chatbubble-outline" size={60} color={C.textMuted} />
+          <Text style={[T.bodyMd, { marginTop: 12 }]}>No support tickets yet</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('CreateTicket')} style={{ marginTop: 20, backgroundColor: C.gold, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 30 }}>
+            <Text style={{ color: '#000', fontWeight: 'bold' }}>Create New Ticket</Text>
           </TouchableOpacity>
         </View>
       ) : (

@@ -1,38 +1,77 @@
 import React from 'react';
 import { View, Text, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { C, T } from '../styles/design';
 
 export default function StopDetailsModal({ visible, onClose, stops, routeName }) {
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <View className="flex-1 bg-black/50 justify-end">
-        <View className="bg-white rounded-t-3xl p-5 max-h-[80%]">
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-xl font-bold">Route Stops: {routeName}</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#000" />
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' }}>
+        <LinearGradient
+          colors={[C.surfaceUp, C.surface]}
+          style={{
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            padding: 20,
+            maxHeight: '80%',
+            borderTopWidth: 1,
+            borderLeftWidth: 1,
+            borderRightWidth: 1,
+            borderColor: C.borderStrong,
+          }}
+        >
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Text style={T.displayMd}>Route Stops: {routeName}</Text>
+            <TouchableOpacity onPress={onClose} style={{ padding: 6 }}>
+              <Ionicons name="close" size={24} color={C.textPrimary} />
             </TouchableOpacity>
           </View>
           <ScrollView showsVerticalScrollIndicator={false}>
             {stops.map((stop, idx) => (
-              <View key={stop.stop?.id || idx} className="flex-row items-start py-3 border-b border-gray-100">
-                <View className="w-6 h-6 rounded-full bg-gray-200 items-center justify-center mr-3">
-                  <Text className="text-black text-xs font-bold">{stop.sequence_no}</Text>
+              <View
+                key={stop.stop?.id || idx}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  paddingVertical: 12,
+                  borderBottomWidth: idx === stops.length - 1 ? 0 : 1,
+                  borderBottomColor: C.border,
+                }}
+              >
+                <View
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: C.goldDim,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 12,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: 'bold', color: C.gold }}>{stop.sequence_no}</Text>
                 </View>
-                <View className="flex-1">
-                  <Text className="text-black font-medium">{stop.stop?.name || stop.name}</Text>
-                  {stop.boarding_allowed && (
-                    <Text className="text-green-600 text-xs">Pickup allowed</Text>
-                  )}
-                  {stop.deboarding_allowed && (
-                    <Text className="text-blue-600 text-xs">Dropoff allowed</Text>
-                  )}
+                <View style={{ flex: 1 }}>
+                  <Text style={T.bodyMd}>{stop.stop?.name || stop.name}</Text>
+                  <View style={{ flexDirection: 'row', marginTop: 6, gap: 8 }}>
+                    {stop.boarding_allowed && (
+                      <View style={{ backgroundColor: C.greenDim, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: C.green }}>Pickup allowed</Text>
+                      </View>
+                    )}
+                    {stop.deboarding_allowed && (
+                      <View style={{ backgroundColor: C.blueDim, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: C.blue }}>Dropoff allowed</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
               </View>
             ))}
           </ScrollView>
-        </View>
+        </LinearGradient>
       </View>
     </Modal>
   );
-}  
+}

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import AnimatedButton from '../components/AnimatedButton';
+import { C, T } from '../styles/design';
 
 export default function BookingConfirmationScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
@@ -18,39 +19,80 @@ export default function BookingConfirmationScreen({ route, navigation }) {
   };
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
       <Header title="Booking Confirmed" />
-      <ScrollView contentContainerClassName="items-center px-5 py-8">
-        <View className="relative mb-4">
-          <View className="absolute inset-0 bg-white/20 rounded-full w-24 h-24" />
-          <Ionicons name="checkmark-circle" size={80} color="#fff" />
+      <ScrollView contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 20, paddingBottom: 40 }}>
+        {/* Success icon with glow */}
+        <View style={{ position: 'relative', marginVertical: 20 }}>
+          <LinearGradient
+            colors={[C.goldDim, 'transparent']}
+            style={{ position: 'absolute', width: 100, height: 100, borderRadius: 50, alignSelf: 'center' }}
+          />
+          <Ionicons name="checkmark-circle" size={80} color={C.gold} />
         </View>
-        <Text className="text-white text-3xl font-bold text-center">Booking Confirmed!</Text>
-        <Text className="text-gray-400 text-base text-center mt-2 mb-6">Your trip has been successfully booked.</Text>
+
+        <Text style={[T.displayMd, { textAlign: 'center', marginBottom: 8 }]}>Booking Confirmed!</Text>
+        <Text style={[T.bodySm, { textAlign: 'center', marginBottom: 24 }]}>Your trip has been successfully booked.</Text>
+
+        {/* OTP Card */}
         {otp && (
-          <View className="bg-gray-900 rounded-2xl p-4 mb-6 w-full border border-gray-800">
-            <Text className="text-gray-400 text-sm text-center mb-1">Boarding OTP</Text>
-            <Text className="text-white text-4xl font-bold text-center tracking-widest">{otp}</Text>
-            <Text className="text-gray-500 text-xs text-center mt-2">Show this to the driver at pickup</Text>
-          </View>
+          <LinearGradient
+            colors={[C.surfaceUp, C.surface]}
+            style={{
+              width: '100%',
+              borderRadius: 20,
+              padding: 20,
+              marginBottom: 24,
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: C.border,
+            }}
+          >
+            <Text style={[T.headingSm, { marginBottom: 4 }]}>Boarding OTP</Text>
+            <Text style={{ fontSize: 42, fontWeight: '800', letterSpacing: 6, color: C.gold }}>{otp}</Text>
+            <Text style={[T.bodySm, { marginTop: 6 }]}>Show this to the driver at pickup</Text>
+          </LinearGradient>
         )}
 
-        <LinearGradient colors={['#1a1a1a', '#0a0a0a']} className="w-full rounded-2xl p-5 mb-8 border border-gray-800">
-          <View className="flex-row items-center mb-4 pb-3 border-b border-gray-800">
-            <Ionicons name="bus-outline" size={22} color="#fff" />
-            <Text className="text-white text-lg font-bold ml-3 flex-1">{busRoute.name}</Text>
+        {/* Trip Details Card */}
+        <LinearGradient
+          colors={[C.surfaceUp, C.surface]}
+          style={{
+            width: '100%',
+            borderRadius: 24,
+            padding: 20,
+            marginBottom: 30,
+            borderWidth: 1,
+            borderColor: C.border,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: C.border }}>
+            <Ionicons name="bus-outline" size={22} color={C.gold} />
+            <Text style={[T.bodyLg, { marginLeft: 10 }]}>{busRoute.name}</Text>
           </View>
-          <View className="flex-row items-center mb-3"><Ionicons name="car-sport" size={20} color="#fff" /><Text className="text-gray-300 text-base ml-3">Bus Type: {busType.toUpperCase()}</Text></View>
-          <View className="flex-row items-center mb-3"><Ionicons name="time-outline" size={20} color="#fff" /><Text className="text-gray-300 text-base ml-3">Departure: {formatTime(busRoute.time)}</Text></View>
-          <View className="flex-row items-center mb-3"><Ionicons name="grid-outline" size={20} color="#fff" /><Text className="text-gray-300 text-base ml-3">Seats: {seats.join(', ')}</Text></View>
-          <View className="flex-row items-center mt-2 pt-3 border-t border-gray-800"><Ionicons name="cash-outline" size={22} color="#fff" /><Text className="text-white text-xl font-bold ml-3">Total Paid: ₹{total}</Text></View>
+          {[
+            { icon: 'car-sport', label: 'Bus Type', value: busType.toUpperCase() },
+            { icon: 'time-outline', label: 'Departure', value: formatTime(busRoute.time) },
+            { icon: 'grid-outline', label: 'Seats', value: seats.join(', ') },
+          ].map((item, i) => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <Ionicons name={item.icon} size={16} color={C.textMuted} />
+              <Text style={[T.bodyMd, { marginLeft: 12, flex: 1 }]}>{item.label}</Text>
+              <Text style={T.bodyMd}>{item.value}</Text>
+            </View>
+          ))}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.border }}>
+            <Ionicons name="cash-outline" size={20} color={C.gold} />
+            <Text style={[T.bodyLg, { marginLeft: 12 }]}>Total Paid</Text>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', color: C.gold, marginLeft: 'auto' }}>₹{total}</Text>
+          </View>
         </LinearGradient>
 
         <AnimatedButton
           title="View My Bookings"
           onPress={() => navigation.navigate('MainTabs', { screen: 'Bookings' })}
-          style={{ width: '100%', backgroundColor: '#fff' }}
-          textStyle={{ color: '#000', fontWeight: 'bold' }}
+          style={{ width: '100%' }}
+          buttonColor="gold"
         />
       </ScrollView>
     </View>

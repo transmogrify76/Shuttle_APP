@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import { getRfidRides } from '../services/rfidApi';
+import { C, T } from '../styles/design';
 
 export default function RfidRidesScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -35,25 +37,37 @@ export default function RfidRidesScreen({ navigation }) {
 
   useEffect(() => { loadRides(); }, []);
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity onPress={() => navigation.navigate('RfidRideDetail', { rideId: item.id })} className="bg-gray-900 rounded-xl p-4 mb-3 border border-gray-800">
-      <View className="flex-row justify-between items-center mb-2">
-        <Text className="text-white font-bold">{item.pickup_stop?.name}</Text>
-        <Text className="text-gray-400 text-xs">{new Date(item.boarded_at).toLocaleTimeString()}</Text>
-      </View>
-      {item.dropoff_stop && <Text className="text-gray-300 text-sm">→ {item.dropoff_stop.name}</Text>}
-      <View className="flex-row justify-between mt-2">
-        <Text className="text-gray-400 text-xs">Fare: ₹{item.final_fare_amount}</Text>
-        <Text className={`text-xs font-bold ${item.status === 'completed' ? 'text-green-500' : 'text-yellow-500'}`}>{item.status.toUpperCase()}</Text>
-      </View>
-    </TouchableOpacity>
-  );
+  const renderItem = ({ item }) => {
+    const netFare = item.fare_net_amount !== undefined ? item.fare_net_amount : item.fare_amount;
+    const hasReversal = item.fare_reversed_amount && parseFloat(item.fare_reversed_amount) !== 0;
+    return (
+      <TouchableOpacity onPress={() => navigation.navigate('RfidRideDetail', { rideId: item.id })}>
+        <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: C.border }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <Text style={[T.bodyMd, { fontWeight: 'bold' }]}>{item.pickup_stop?.name}</Text>
+            <Text style={[T.bodySm, { color: C.textMuted }]}>{new Date(item.boarded_at).toLocaleTimeString()}</Text>
+          </View>
+          {item.dropoff_stop && <Text style={[T.bodySm, { marginBottom: 8 }]}>→ {item.dropoff_stop.name}</Text>}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Text style={[T.bodySm, { color: C.textMuted }]}>Fare: ₹{netFare}</Text>
+            {hasReversal && <Text style={{ color: C.gold, fontSize: 10, fontWeight: 'bold' }}>Reversal applied</Text>}
+            <Text style={{ color: item.status === 'completed' ? C.green : C.gold, fontSize: 10, fontWeight: 'bold' }}>{item.status.toUpperCase()}</Text>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
       <Header title="RFID Rides" />
-      {loading && !refreshing ? <ActivityIndicator size="large" color="#fff" /> : items.length === 0 ? (
-        <View className="flex-1 justify-center items-center"><Ionicons name="bus-outline" size={60} color="#444" /><Text className="text-gray-500 mt-3">No RFID rides yet</Text></View>
+      {loading && !refreshing ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color={C.gold} /></View>
+      ) : items.length === 0 ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Ionicons name="bus-outline" size={60} color={C.textMuted} />
+          <Text style={[T.bodyMd, { marginTop: 12 }]}>No RFID rides yet</Text>
+        </View>
       ) : (
         <FlatList
           data={items}

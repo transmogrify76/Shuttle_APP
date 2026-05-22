@@ -8,11 +8,22 @@ import { AuthProvider } from './src/context/AuthContext';
 import { NotificationProvider } from './src/context/NotificationContext';
 import { SeatmapProvider } from './src/context/SeatmapContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import { darkTheme } from './src/styles/theme';
+
+// Global error handler to catch React render errors
+if (typeof ErrorUtils !== 'undefined') {
+  ErrorUtils.setGlobalHandler((error, isFatal) => {
+    console.error('GLOBAL ERROR:', error);
+    console.error(error.stack);
+    // Show an alert with the error message and stack (only during development)
+    alert(error.message + '\n\n' + error.stack);
+  });
+}
 
 export default function App() {
   return (
     <SafeAreaProvider>
-      <PaperProvider>
+      <PaperProvider theme={darkTheme}>
         <AuthProvider>
           <SeatmapProvider>
             <NotificationProvider>

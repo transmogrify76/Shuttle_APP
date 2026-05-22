@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
+import { C } from '../styles/design';
 
 const SeatMap = ({ bookedSeats = [], onSeatSelect }) => {
   const [selectedSeats, setSelectedSeats] = useState([]);
@@ -89,7 +90,8 @@ const SeatMap = ({ bookedSeats = [], onSeatSelect }) => {
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    backgroundColor: '#000',
+    backgroundColor: C.surface,
+    borderRadius: 20,
   },
   legend: {
     flexDirection: 'row',
@@ -108,17 +110,17 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   availableBox: {
-    backgroundColor: '#333',
+    backgroundColor: C.green,
   },
   selectedBox: {
-    backgroundColor: '#fff',
+    backgroundColor: C.gold,
   },
   bookedBox: {
-    backgroundColor: '#ef4444',
+    backgroundColor: C.red,
   },
   legendText: {
     fontSize: 12,
-    color: '#aaa',
+    color: C.textSecondary,
   },
   row: {
     flexDirection: 'row',
@@ -129,7 +131,7 @@ const styles = StyleSheet.create({
     width: 30,
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#aaa',
+    color: C.textMuted,
   },
   seat: {
     width: 44,
@@ -137,14 +139,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,
-    backgroundColor: '#333',
+    backgroundColor: C.surfaceHigh,
     marginHorizontal: 4,
   },
   booked: {
-    backgroundColor: '#ef4444',
+    backgroundColor: C.redDim,
+    borderWidth: 1,
+    borderColor: C.red,
   },
   selected: {
-    backgroundColor: '#fff',
+    backgroundColor: C.gold,
   },
   seatText: {
     fontSize: 12,

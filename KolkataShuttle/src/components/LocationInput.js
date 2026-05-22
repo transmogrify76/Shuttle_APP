@@ -1,23 +1,22 @@
 import React from 'react';
-import { View } from 'react-native';
-import { TextInput, IconButton, Text } from 'react-native-paper';
+import { View, Text, TextInput } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { C, T } from '../styles/design';
 
 export default function LocationInput() {
   return (
-    <View style={{ marginHorizontal: 16, marginBottom: 12 }}>
+    <View style={{ marginHorizontal: 16, marginBottom: 12, backgroundColor: C.surfaceUp, borderRadius: 16, padding: 12 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-        <IconButton icon="map-marker" iconColor="#10b981" size={20} />
-        <Text variant="bodyMedium">Your current location</Text>
+        <Ionicons name="map-marker" size={20} color={C.gold} />
+        <Text style={[T.bodySm, { marginLeft: 8, color: C.textSecondary }]}>Your current location</Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <IconButton icon="navigation" iconColor="#10b981" size={20} />
+        <Ionicons name="navigation" size={20} color={C.gold} />
         <TextInput
-          mode="flat"
           placeholder="Enter pick-up location"
-          placeholderTextColor="#666"
-          style={{ flex: 1, backgroundColor: 'transparent' }}
-          theme={{ colors: { text: '#fff', placeholder: '#666' } }}
-          underlineColor="transparent"
+          placeholderTextColor={C.textMuted}
+          style={{ flex: 1, marginLeft: 8, color: C.textPrimary, fontSize: 14 }}
+          underlineColorAndroid="transparent"
         />
       </View>
     </View>
