@@ -34,7 +34,7 @@ const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 const BOTTOM_SHEET_MAX_HEIGHT = screenHeight * 0.72;
 const BOTTOM_SHEET_MIN_HEIGHT = screenHeight * 0.18;
 
-// ─── DESIGN TOKENS ─────────────────────────────────────────────────────────────
+// ─── DESIGN TOKENS (unchanged) ─────────────────────────────────────────────────
 const C = {
   bg: '#0A0A0F',
   surface: '#13131A',
@@ -57,7 +57,7 @@ const C = {
   shimmer: 'rgba(255,255,255,0.04)',
 };
 
-// ─── TYPOGRAPHY ─────────────────────────────────────────────────────────────────
+// ─── TYPOGRAPHY (unchanged) ─────────────────────────────────────────────────
 const T = StyleSheet.create({
   displayLg: { fontSize: 34, fontWeight: '800', color: C.textPrimary, letterSpacing: -1.2, lineHeight: 40 },
   displayMd: { fontSize: 26, fontWeight: '700', color: C.textPrimary, letterSpacing: -0.8 },
@@ -68,7 +68,7 @@ const T = StyleSheet.create({
   mono: { fontSize: 11, fontWeight: '600', color: C.gold, letterSpacing: 0.5 },
 });
 
-// ─── GLASS CARD WRAPPER ─────────────────────────────────────────────────────────
+// ─── GLASS CARD WRAPPER (unchanged) ─────────────────────────────────────────
 const GlassCard = ({ children, style, noBorder }) => (
   <View style={[{
     backgroundColor: C.surfaceUp,
@@ -81,14 +81,14 @@ const GlassCard = ({ children, style, noBorder }) => (
   </View>
 );
 
-// ─── GOLD PILL TAG ──────────────────────────────────────────────────────────────
+// ─── GOLD PILL TAG (unchanged) ──────────────────────────────────────────────
 const GoldTag = ({ label }) => (
   <View style={{ backgroundColor: C.goldDim, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(201,168,76,0.3)' }}>
     <Text style={T.mono}>{label}</Text>
   </View>
 );
 
-// ─── STOP SELECTOR ─────────────────────────────────────────────────────────────
+// ─── STOP SELECTOR (unchanged) ──────────────────────────────────────────────
 const StopSelector = ({ stops, selectedId, onSelect, label, icon, accent }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
@@ -136,7 +136,6 @@ const StopSelector = ({ stops, selectedId, onSelect, label, icon, accent }) => {
             backgroundColor: C.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28,
             borderTopWidth: 1, borderColor: C.borderStrong, maxHeight: screenHeight * 0.65,
           }}>
-            {/* Handle */}
             <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 8 }}>
               <View style={{ width: 36, height: 4, backgroundColor: C.surfaceHigh, borderRadius: 2 }} />
             </View>
@@ -184,7 +183,7 @@ const StopSelector = ({ stops, selectedId, onSelect, label, icon, accent }) => {
   );
 };
 
-// ─── RIDE CARD ──────────────────────────────────────────────────────────────────
+// ─── RIDE CARD (unchanged) ──────────────────────────────────────────────────
 const RideCard = ({ trip, selected, onPress, onViewStops, onInfoPress, seatInfo }) => {
   const scale = useRef(new Animated.Value(1)).current;
   const shimmer = useRef(new Animated.Value(0)).current;
@@ -237,7 +236,6 @@ const RideCard = ({ trip, selected, onPress, onViewStops, onInfoPress, seatInfo 
           backgroundColor: selected ? '#16151F' : C.surfaceUp,
           overflow: 'hidden',
         }}>
-          {/* Gold top accent line for selected */}
           {selected && (
             <LinearGradient
               colors={[C.gold, 'transparent']}
@@ -246,9 +244,7 @@ const RideCard = ({ trip, selected, onPress, onViewStops, onInfoPress, seatInfo 
             />
           )}
           <View style={{ padding: 16 }}>
-            {/* Header row */}
             <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-              {/* Icon */}
               <View style={{
                 width: 48, height: 48, borderRadius: 14,
                 backgroundColor: selected ? C.goldDim : C.surfaceHigh,
@@ -257,8 +253,6 @@ const RideCard = ({ trip, selected, onPress, onViewStops, onInfoPress, seatInfo 
               }}>
                 <Ionicons name="bus" size={22} color={selected ? C.gold : C.textSecondary} />
               </View>
-
-              {/* Info */}
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 6 }}>
                   <Text style={[T.bodyLg, selected ? { color: C.textPrimary } : {}]}>{vehicleName}</Text>
@@ -280,8 +274,6 @@ const RideCard = ({ trip, selected, onPress, onViewStops, onInfoPress, seatInfo 
                   )}
                 </View>
               </View>
-
-              {/* Action buttons */}
               <View style={{ gap: 6 }}>
                 <TouchableOpacity
                   onPress={(e) => { e.stopPropagation(); onViewStops(); }}
@@ -304,8 +296,6 @@ const RideCard = ({ trip, selected, onPress, onViewStops, onInfoPress, seatInfo 
                 </TouchableOpacity>
               </View>
             </View>
-
-            {/* Seat capacity bar */}
             {seatInfo && (
               <View style={{ marginTop: 14 }}>
                 <View style={{ height: 3, backgroundColor: C.surfaceHigh, borderRadius: 2, overflow: 'hidden' }}>
@@ -328,7 +318,7 @@ const RideCard = ({ trip, selected, onPress, onViewStops, onInfoPress, seatInfo 
   );
 };
 
-// ─── TRIP STOP MODAL ────────────────────────────────────────────────────────────
+// ─── TRIP STOP MODAL (unchanged) ────────────────────────────────────────────
 const TripStopModal = ({ visible, onClose, stops }) => {
   if (!stops) return null;
   return (
@@ -356,7 +346,6 @@ const TripStopModal = ({ visible, onClose, stops }) => {
               const isLast = idx === stops.length - 1;
               return (
                 <View key={stop.route_stop_id || idx} style={{ flexDirection: 'row', alignItems: 'stretch' }}>
-                  {/* Timeline */}
                   <View style={{ width: 32, alignItems: 'center' }}>
                     <View style={{
                       width: 12, height: 12, borderRadius: 6, marginTop: 18,
@@ -366,7 +355,6 @@ const TripStopModal = ({ visible, onClose, stops }) => {
                     }} />
                     {!isLast && <View style={{ flex: 1, width: 2, backgroundColor: C.border, marginVertical: 2 }} />}
                   </View>
-                  {/* Content */}
                   <View style={{ flex: 1, paddingVertical: 12, paddingLeft: 12, borderBottomWidth: isLast ? 0 : 1, borderColor: C.border }}>
                     <Text style={T.bodyMd}>{stop.stop?.name}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
@@ -395,7 +383,7 @@ const TripStopModal = ({ visible, onClose, stops }) => {
   );
 };
 
-// ─── DRIVER INFO MODAL ──────────────────────────────────────────────────────────
+// ─── DRIVER INFO MODAL (unchanged) ──────────────────────────────────────────
 const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
   if (!driverInfo) return null;
   const ratingNum = parseFloat(driverInfo.driver_average_rating);
@@ -415,7 +403,6 @@ const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
           backgroundColor: C.surface, borderRadius: 28, width: '100%',
           borderWidth: 1, borderColor: C.borderStrong, overflow: 'hidden',
         }}>
-          {/* Gold header stripe */}
           <LinearGradient
             colors={['rgba(201,168,76,0.25)', 'transparent']}
             style={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 20 }}
@@ -439,8 +426,6 @@ const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
               </View>
             </View>
           </LinearGradient>
-
-          {/* Vehicle info */}
           <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
             <GlassCard style={{ padding: 16 }}>
               <Text style={[T.headingSm, { marginBottom: 12 }]}>Vehicle</Text>
@@ -456,7 +441,6 @@ const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
                 </View>
               ))}
             </GlassCard>
-
             <TouchableOpacity onPress={onClose} style={{ marginTop: 20 }}>
               <LinearGradient colors={[C.gold, C.goldLight]} style={{ borderRadius: 16, paddingVertical: 15, alignItems: 'center' }}>
                 <Text style={{ color: '#000', fontWeight: '700', fontSize: 15 }}>Done</Text>
@@ -469,7 +453,7 @@ const DriverInfoModal = ({ visible, onClose, driverInfo }) => {
   );
 };
 
-// ─── SKELETON ──────────────────────────────────────────────────────────────────
+// ─── SKELETON (unchanged) ──────────────────────────────────────────────────
 const Skeleton = ({ width, height, borderRadius = 8 }) => {
   const opacity = useRef(new Animated.Value(0.4)).current;
   useEffect(() => {
@@ -483,7 +467,7 @@ const Skeleton = ({ width, height, borderRadius = 8 }) => {
   return <Animated.View style={{ width, height, borderRadius, backgroundColor: C.surfaceHigh, opacity }} />;
 };
 
-// ─── MAIN SCREEN ───────────────────────────────────────────────────────────────
+// ─── MAIN SCREEN ───────────────────────────────────────────────────────────
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -668,12 +652,10 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      {/* MAP */}
       <View style={{ flex: 1, paddingTop: insets.top }}>
         <OSMMap routeCoordinates={routeCoordinates} />
       </View>
 
-      {/* BOTTOM SHEET */}
       <Animated.View style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         height: BOTTOM_SHEET_MAX_HEIGHT,
@@ -688,7 +670,6 @@ export default function HomeScreen({ navigation }) {
         shadowRadius: 20,
         elevation: 20,
       }}>
-        {/* Drag handle area */}
         <View {...panResponder.panHandlers} style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 6 }}>
           <View style={{ width: 36, height: 4, backgroundColor: C.surfaceHigh, borderRadius: 2 }} />
         </View>
@@ -697,7 +678,7 @@ export default function HomeScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 50 }}
         >
-          {/* Welcome Header */}
+          {/* Welcome Header – UPDATED with Travellers button */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, marginTop: 4 }}>
             <View>
               <Text style={[T.headingSm, { marginBottom: 6 }]}>Good morning</Text>
@@ -706,16 +687,33 @@ export default function HomeScreen({ navigation }) {
                 : <Text style={T.displayLg}>{userName}</Text>
               }
             </View>
-            <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{
-              width: 46, height: 46, borderRadius: 14,
-              backgroundColor: C.surfaceHigh, borderWidth: 1, borderColor: C.border,
-              alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Ionicons name="person-outline" size={20} color={C.textSecondary} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              {/* Travellers button – NEW */}
+              <TouchableOpacity
+                onPress={() => navigation.navigate('TravellerProfiles')}
+                style={{
+                  width: 46, height: 46, borderRadius: 14,
+                  backgroundColor: C.surfaceHigh, borderWidth: 1, borderColor: C.border,
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="people-outline" size={20} color={C.gold} />
+              </TouchableOpacity>
+              {/* Profile button – unchanged */}
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Profile')}
+                style={{
+                  width: 46, height: 46, borderRadius: 14,
+                  backgroundColor: C.surfaceHigh, borderWidth: 1, borderColor: C.border,
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="person-outline" size={20} color={C.textSecondary} />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Route Selector */}
+          {/* Rest of the UI unchanged */}
           <Text style={[T.headingSm, { marginBottom: 10 }]}>Route</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }} contentContainerStyle={{ gap: 8 }}>
             {routesData.map((route, idx) => {
@@ -747,12 +745,10 @@ export default function HomeScreen({ navigation }) {
             })}
           </ScrollView>
 
-          {/* Stop Selectors */}
           <Text style={[T.headingSm, { marginBottom: 10 }]}>Journey</Text>
           <StopSelector stops={stops} selectedId={pickupStopId} onSelect={setPickupStopId} label="Pickup stop" icon="navigate-circle" accent="gold" />
           <StopSelector stops={stops} selectedId={dropoffStopId} onSelect={setDropoffStopId} label="Dropoff stop" icon="location" accent="blue" />
 
-          {/* Fare Card */}
           {fare && (
             <LinearGradient
               colors={['rgba(201,168,76,0.15)', 'rgba(201,168,76,0.05)']}
@@ -775,7 +771,6 @@ export default function HomeScreen({ navigation }) {
             </LinearGradient>
           )}
 
-          {/* Available Buses Section */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, marginBottom: 12 }}>
             <Text style={[T.headingSm]}>Available Buses</Text>
             {loadingSeats && (
@@ -809,7 +804,6 @@ export default function HomeScreen({ navigation }) {
             ))
           )}
 
-          {/* CTA Button */}
           <TouchableOpacity
             onPress={handleConfirm}
             disabled={!canBook}
@@ -847,7 +841,6 @@ export default function HomeScreen({ navigation }) {
         </ScrollView>
       </Animated.View>
 
-      {/* Floating restore button */}
       {!sheetVisible && (
         <TouchableOpacity
           onPress={() => setSheetVisible(true)}

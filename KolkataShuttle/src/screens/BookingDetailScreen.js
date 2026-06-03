@@ -1,16 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  Modal,
-  TextInput,
-  ActivityIndicator,
-  Share,
-  StyleSheet,
-  Dimensions,
+  View, Text, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator,
+  Share, StyleSheet, Dimensions, TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,200 +10,173 @@ import QRCode from 'react-native-qrcode-svg';
 import Header from '../components/Header';
 import AnimatedButton from '../components/AnimatedButton';
 import {
-  getBookingCurrentStatus,
-  getBookingDetail,
-  cancelBooking,
+  getBookingSessionDetail,
+  getScheduledTripDetail,
+  getDriverVehicleInfo,
   getBookingQR,
+  cancelBookingSession,
+  cancelBookingSessionSeat,
   createRating,
   getBookingRating,
-  getDriverVehicleInfo,
 } from '../services/bookingApi';
+import { C, T } from '../styles/design';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-// ─── DESIGN TOKENS ─────────────────────────────────────────────────────────────
-const C = {
-  bg: '#0A0A0F',
-  surface: '#13131A',
-  surfaceUp: '#1C1C26',
-  surfaceHigh: '#242432',
-  border: 'rgba(255,255,255,0.07)',
-  borderStrong: 'rgba(255,255,255,0.13)',
-  gold: '#C9A84C',
-  goldLight: '#E8C76B',
-  goldDim: 'rgba(201,168,76,0.18)',
-  white: '#FFFFFF',
-  textPrimary: '#F0EFE8',
-  textSecondary: '#9997A0',
-  textMuted: '#5C5A65',
-  green: '#34C97E',
-  greenDim: 'rgba(52,201,126,0.15)',
-  blue: '#4A90D9',
-  blueDim: 'rgba(74,144,217,0.15)',
-  red: '#E05252',
-};
-
-// ─── TYPOGRAPHY ─────────────────────────────────────────────────────────────────
-const T = StyleSheet.create({
-  displayLg: { fontSize: 34, fontWeight: '800', color: C.textPrimary, letterSpacing: -1.2, lineHeight: 40 },
-  displayMd: { fontSize: 26, fontWeight: '700', color: C.textPrimary, letterSpacing: -0.8 },
-  headingSm: { fontSize: 13, fontWeight: '700', color: C.textSecondary, letterSpacing: 1.6, textTransform: 'uppercase' },
-  bodyLg: { fontSize: 16, fontWeight: '600', color: C.textPrimary },
-  bodyMd: { fontSize: 14, fontWeight: '500', color: C.textPrimary },
-  bodySm: { fontSize: 12, fontWeight: '400', color: C.textSecondary },
-  mono: { fontSize: 11, fontWeight: '600', color: C.gold, letterSpacing: 0.5 },
-});
-
-// ─── GLASS CARD WRAPPER ─────────────────────────────────────────────────────────
-const GlassCard = ({ children, style, noBorder, goldBorder = false }) => (
-  <View
-    style={[
-      {
-        backgroundColor: C.surfaceUp,
-        borderRadius: 20,
-        borderWidth: noBorder ? 0 : 1,
-        borderColor: goldBorder ? C.gold : C.border,
-        overflow: 'hidden',
-      },
-      style,
-    ]}
-  >
+const GlassCard = ({ children, style }) => (
+  <View style={[{ backgroundColor: C.surfaceUp, borderRadius: 20, borderWidth: 1, borderColor: C.border, overflow: 'hidden', padding: 18 }, style]}>
     {children}
   </View>
 );
 
-// ─── GOLD TAG (e.g., for AC) ──────────────────────────────────────────────────
-const GoldTag = ({ label }) => (
-  <View
-    style={{
-      backgroundColor: C.goldDim,
-      borderRadius: 6,
-      paddingHorizontal: 7,
-      paddingVertical: 3,
-      borderWidth: 1,
-      borderColor: 'rgba(201,168,76,0.3)',
-    }}
-  >
-    <Text style={T.mono}>{label}</Text>
-  </View>
-);
-
-// ─── HELPER: STAR RATING RENDERER ──────────────────────────────────────────────
 const renderStars = (rating, size = 13) => {
   const numeric = typeof rating === 'number' && !isNaN(rating) ? rating : 0;
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Ionicons
-          key={i}
-          name={i <= Math.round(numeric) ? 'star' : 'star-outline'}
-          size={size}
-          color={C.gold}
-        />
+      {[1,2,3,4,5].map(i => (
+        <Ionicons key={i} name={i <= Math.round(numeric) ? 'star' : 'star-outline'} size={size} color={C.gold} />
       ))}
     </View>
   );
 };
 
 export default function BookingDetailScreen({ route, navigation }) {
-  const { bookingId } = route.params;
+  const { sessionId } = route.params;
   const insets = useSafeAreaInsets();
 
-  const [status, setStatus] = useState(null);
-  const [booking, setBooking] = useState(null);
-  const [qrData, setQrData] = useState(null);
+  const [session, setSession] = useState(null);
+  const [scheduledTrip, setScheduledTrip] = useState(null);
+  const [driverVehicleInfo, setDriverVehicleInfo] = useState(null);
+  const [qrByBookingId, setQrByBookingId] = useState({});
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const [cancellingSeat, setCancellingSeat] = useState(null);
+  const [existingRating, setExistingRating] = useState(null);
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
   const [tripRating, setTripRating] = useState(5);
   const [driverRating, setDriverRating] = useState(5);
   const [reviewText, setReviewText] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
-  const [existingRating, setExistingRating] = useState(null);
-  const [driverVehicleInfo, setDriverVehicleInfo] = useState(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      let bookingStatus = null;
-      try {
-        const live = await getBookingCurrentStatus(bookingId);
-        setStatus(live);
-        bookingStatus = live.booking_status;
-        if (live.scheduled_trip_id) {
-          const info = await getDriverVehicleInfo(live.scheduled_trip_id);
-          setDriverVehicleInfo(info);
-        }
-      } catch (e) {
-        const bookingData = await getBookingDetail(bookingId);
-        setBooking(bookingData);
-        bookingStatus = bookingData.booking_status;
-        if (bookingData.scheduled_trip_id) {
-          const info = await getDriverVehicleInfo(bookingData.scheduled_trip_id);
-          setDriverVehicleInfo(info);
-        }
-      }
 
-      const isActive =
-        bookingStatus === 'booked' ||
-        bookingStatus === 'pending_payment' ||
-        bookingStatus === 'in_progress';
-      if (isActive) {
+      // 1. Fetch session detail
+      const sessionRes = await getBookingSessionDetail(sessionId);
+      const sessionData = sessionRes.booking_session || sessionRes;
+      setSession(sessionData);
+
+      // 2. Fetch scheduled trip details
+      const tripId = sessionData.scheduled_trip_id;
+      if (!tripId) throw new Error('Missing scheduled_trip_id in session');
+      const tripData = await getScheduledTripDetail(tripId);
+      setScheduledTrip(tripData);
+
+      // 3. Fetch driver & vehicle info
+      const driverInfo = await getDriverVehicleInfo(tripId);
+      setDriverVehicleInfo(driverInfo);
+
+      // 4. Fetch QR for each active seat (booked or boarded)
+      const activeBookings = sessionData.bookings?.filter(b =>
+        b.booking_status === 'booked' || b.booking_status === 'boarded'
+      ) || [];
+      const qrMap = {};
+      await Promise.all(
+        activeBookings.map(async (booking) => {
+          try {
+            const qr = await getBookingQR(booking.id);
+            qrMap[booking.id] = qr;
+          } catch (e) {
+            console.log(`QR not available for booking ${booking.id}`);
+          }
+        })
+      );
+      setQrByBookingId(qrMap);
+
+      // 5. Check for rating on completed bookings (optional: pick first completed)
+      const completedBooking = sessionData.bookings?.find(b => b.booking_status === 'completed');
+      if (completedBooking) {
         try {
-          const qr = await getBookingQR(bookingId);
-          setQrData(qr);
-        } catch (err) {
-          console.log('QR not available');
-        }
+          const rating = await getBookingRating(completedBooking.id);
+          setExistingRating(rating);
+        } catch (e) {}
       }
-
-      try {
-        const rating = await getBookingRating(bookingId);
-        setExistingRating(rating);
-      } catch (e) {}
-    } catch (error) {
-      Alert.alert('Error', error.message);
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', err.message || 'Failed to load booking details');
       navigation.goBack();
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = async () => {
-    Alert.alert('Cancel Booking', 'Are you sure?', [
+  // Helper: get pickup/dropoff stop names and planned times from scheduledTrip using session IDs
+  const getPickupDropoffInfo = () => {
+    if (!scheduledTrip || !session) return { pickupName: 'Pickup', dropoffName: 'Dropoff', pickupTime: null, dropoffTime: null };
+    const stops = scheduledTrip.stops || [];
+    // Find pickup stop
+    let pickupStop = stops.find(s => s.stop?.id === session.pickup_stop_id);
+    if (!pickupStop && session.pickup_sequence_no_snapshot) {
+      pickupStop = stops.find(s => s.sequence_no === session.pickup_sequence_no_snapshot);
+    }
+    // Find dropoff stop
+    let dropoffStop = stops.find(s => s.stop?.id === session.dropoff_stop_id);
+    if (!dropoffStop && session.dropoff_sequence_no_snapshot) {
+      dropoffStop = stops.find(s => s.sequence_no === session.dropoff_sequence_no_snapshot);
+    }
+    return {
+      pickupName: pickupStop?.stop?.name || 'Pickup',
+      dropoffName: dropoffStop?.stop?.name || 'Dropoff',
+      pickupTime: pickupStop?.planned_time_at_stop ? new Date(pickupStop.planned_time_at_stop) : null,
+      dropoffTime: dropoffStop?.planned_time_at_stop ? new Date(dropoffStop.planned_time_at_stop) : null,
+    };
+  };
+
+  const { pickupName, dropoffName, pickupTime, dropoffTime } = getPickupDropoffInfo();
+
+  const handleCancelWholeSession = async () => {
+    Alert.alert('Cancel Entire Booking', 'All seats will be cancelled and refund requested.', [
       { text: 'No', style: 'cancel' },
       {
-        text: 'Yes',
-        style: 'destructive',
+        text: 'Yes', style: 'destructive',
         onPress: async () => {
           setCancelling(true);
           try {
-            await cancelBooking(bookingId);
-            Alert.alert('Cancelled', 'Booking cancelled.');
+            await cancelBookingSession(sessionId);
+            Alert.alert('Cancelled', 'Booking session cancelled. Refund will be processed.');
             navigation.goBack();
-          } catch (error) {
-            Alert.alert('Error', error.message);
-          } finally {
-            setCancelling(false);
-          }
+          } catch (err) { Alert.alert('Error', err.message); }
+          finally { setCancelling(false); }
         },
       },
     ]);
   };
 
-  const handleShareQR = async () => {
-    if (qrData?.qr_token) {
-      try {
-        await Share.share({ message: qrData.qr_token });
-      } catch (e) {}
-    }
+  const handleCancelSeat = async (bookingId) => {
+    Alert.alert('Cancel Seat', 'Only this seat will be cancelled. Refund will be requested.', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes', style: 'destructive',
+        onPress: async () => {
+          setCancellingSeat(bookingId);
+          try {
+            await cancelBookingSessionSeat(sessionId, bookingId);
+            Alert.alert('Cancelled', 'Seat cancelled successfully.');
+            loadData();
+          } catch (err) { Alert.alert('Error', err.message); }
+          finally { setCancellingSeat(null); }
+        },
+      },
+    ]);
   };
 
   const handleSubmitRating = async () => {
+    if (!session?.bookings?.length) return;
+    const completedBooking = session.bookings.find(b => b.booking_status === 'completed');
+    const bookingId = completedBooking ? completedBooking.id : session.bookings[0].id;
     setSubmittingRating(true);
     try {
       await createRating(bookingId, {
@@ -223,326 +187,189 @@ export default function BookingDetailScreen({ route, navigation }) {
       Alert.alert('Thank you!', 'Rating submitted.');
       setRatingModalVisible(false);
       loadData();
-    } catch (error) {
-      Alert.alert('Error', error.message);
-    } finally {
-      setSubmittingRating(false);
-    }
+    } catch (err) { Alert.alert('Error', err.message); }
+    finally { setSubmittingRating(false); }
   };
 
-  if (loading) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: C.bg }]}>
-        <ActivityIndicator size="large" color={C.gold} />
-      </View>
-    );
-  }
+  if (loading) return <ActivityIndicator size="large" color={C.gold} style={{ flex:1, backgroundColor:C.bg }} />;
+  if (!session) return null;
 
-  const displayData = status || booking;
-  const trip = displayData?.scheduled_trip || displayData;
-  const canCancel =
-    displayData?.booking_status === 'booked' ||
-    displayData?.booking_status === 'pending_payment';
-  const canRate = displayData?.booking_status === 'completed' && !existingRating;
-  const liveProgress = status;
-
-  const pickupStopName =
-    displayData?.pickup_stop?.stop?.name ||
-    displayData?.pickup_stop?.name ||
-    'Pickup';
-  const dropoffStopName =
-    displayData?.dropoff_stop?.stop?.name ||
-    displayData?.dropoff_stop?.name ||
-    'Dropoff';
-  const tripStartTime = trip?.planned_start_at
-    ? new Date(trip.planned_start_at).toLocaleString()
-    : 'Not scheduled';
-
-  const ratingValue = driverVehicleInfo?.driver_average_rating;
-  const ratingNum =
-    ratingValue != null && !isNaN(parseFloat(ratingValue)) ? parseFloat(ratingValue) : null;
-  const hasRating = ratingNum !== null;
-  const ratingCount = driverVehicleInfo?.driver_rating_count || 0;
-
-  const existingTripRating = existingRating?.trip_rating ? Number(existingRating.trip_rating) : 0;
-  const existingDriverRating = existingRating?.driver_rating ? Number(existingRating.driver_rating) : 0;
-
-  const otp = displayData?.otp || liveProgress?.otp;
-  const seatNumber = displayData?.seat_number || trip?.seat_number;
+  const canCancelWhole = session.status === 'confirmed' && scheduledTrip?.planned_start_at && new Date(scheduledTrip.planned_start_at) > new Date();
+  const payment = session.payments?.[0];
+  const refundedAmount = payment ? parseFloat(payment.refunded_amount) : 0;
+  const hasCompletedBooking = session.bookings?.some(b => b.booking_status === 'completed') && !existingRating;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: C.bg }]}>
+    <View style={{ flex:1, backgroundColor:C.bg, paddingTop: insets.top }}>
       <Header title="Booking Details" />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+      <ScrollView contentContainerStyle={{ paddingHorizontal:20, paddingBottom:40, gap:16 }}>
         {/* Status Card */}
-        <GlassCard style={styles.card}>
+        <GlassCard>
           <Text style={T.headingSm}>STATUS</Text>
-          <View style={styles.statusRow}>
-            <Text style={[styles.statusText, { textTransform: 'capitalize' }]}>
-              {displayData?.booking_status?.replace('_', ' ')}
-            </Text>
-            {canCancel && !cancelling && (
-              <TouchableOpacity onPress={handleCancel}>
+          <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center' }}>
+            <Text style={{ fontSize:24, fontWeight:'700', color:C.textPrimary, textTransform:'capitalize' }}>{session.status}</Text>
+            {canCancelWhole && !cancelling && (
+              <TouchableOpacity onPress={handleCancelWholeSession}>
                 <Ionicons name="close-circle-outline" size={28} color={C.red} />
               </TouchableOpacity>
             )}
           </View>
-          {displayData?.payment_hold_expires_at && (
-            <Text style={styles.holdExpiry}>
-              Payment hold expires:{' '}
-              {new Date(displayData.payment_hold_expires_at).toLocaleString()}
+          {session.payment_hold_expires_at && (
+            <Text style={{ color:C.gold, fontSize:11, marginTop:6 }}>
+              Hold expires: {new Date(session.payment_hold_expires_at).toLocaleString()}
             </Text>
           )}
-          {cancelling && <ActivityIndicator size="small" color={C.red} style={{ marginTop: 8 }} />}
         </GlassCard>
 
-        {/* OTP Card */}
-        {otp && (
-          <GlassCard style={styles.card}>
-            <Text style={T.headingSm}>BOARDING OTP</Text>
-            <Text style={styles.otp}>{otp}</Text>
-            <Text style={T.bodySm}>Show this to the driver</Text>
-          </GlassCard>
-        )}
+        {/* Payment Card */}
+        <GlassCard>
+          <Text style={T.headingSm}>PAYMENT</Text>
+          <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:6 }}>
+            <Text style={T.bodySm}>Total amount</Text>
+            <Text style={T.bodyMd}>₹{parseFloat(session.total_fare_amount)}</Text>
+          </View>
+          {refundedAmount > 0 && (
+            <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:6 }}>
+              <Text style={T.bodySm}>Refunded amount</Text>
+              <Text style={[T.bodyMd, { color:C.gold }]}>₹{refundedAmount}</Text>
+            </View>
+          )}
+          <Text style={T.bodySm}>Payment status: {payment?.effective_status || 'N/A'}</Text>
+        </GlassCard>
 
-        {/* Driver & Vehicle Info */}
+        {/* Driver & Vehicle */}
         {driverVehicleInfo && (
-          <GlassCard style={styles.card}>
-            <Text style={[T.headingSm, { marginBottom: 8 }]}>DRIVER & VEHICLE</Text>
-            <View style={styles.infoRow}>
+          <GlassCard>
+            <Text style={[T.headingSm, { marginBottom:8 }]}>DRIVER & VEHICLE</Text>
+            <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:10 }}>
               <Ionicons name="person-circle-outline" size={18} color={C.textSecondary} />
               <Text style={T.bodyMd}>Driver: {driverVehicleInfo.driver_name || 'N/A'}</Text>
             </View>
-            <View style={styles.infoRow}>
-              {renderStars(hasRating ? ratingNum : 0, 14)}
+            <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:10 }}>
+              {renderStars(driverVehicleInfo.driver_average_rating, 14)}
               <Text style={T.bodySm}>
-                {hasRating
-                  ? ` ${ratingNum.toFixed(1)} (${ratingCount} ratings)`
-                  : ` New (${ratingCount} ratings)`}
+                {driverVehicleInfo.driver_average_rating
+                  ? `${driverVehicleInfo.driver_average_rating.toFixed(1)} (${driverVehicleInfo.driver_rating_count} ratings)`
+                  : 'New driver'}
               </Text>
             </View>
-            <View style={styles.infoRow}>
+            <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:10 }}>
               <Ionicons name="car-outline" size={18} color={C.textSecondary} />
               <Text style={T.bodyMd}>
-                {driverVehicleInfo.vehicle_name || 'Bus'} •{' '}
-                {driverVehicleInfo.vehicle_registration_number || ''}
+                {driverVehicleInfo.vehicle_name || 'Bus'} • {driverVehicleInfo.vehicle_registration_number || ''}
               </Text>
             </View>
-            {driverVehicleInfo.vehicle_model && (
-              <Text style={[T.bodySm, { marginLeft: 26, marginTop: 2 }]}>
-                {driverVehicleInfo.vehicle_model} ({driverVehicleInfo.vehicle_color})
-              </Text>
-            )}
-            <Text style={[T.bodySm, { marginLeft: 26 }]}>
-              Total seats: {driverVehicleInfo.vehicle_total_seat || '?'}
-            </Text>
+            <Text style={[T.bodySm, { marginLeft:26 }]}>Total seats: {driverVehicleInfo.vehicle_total_seat || '?'}</Text>
           </GlassCard>
         )}
 
         {/* Trip Details */}
-        <GlassCard style={styles.card}>
-          <View style={styles.tripHeader}>
-            <Text style={T.headingSm}>TRIP DETAILS</Text>
-            {trip?.route?.has_ac && <GoldTag label="AC" />}
-          </View>
-          <View style={styles.infoRow}>
+        <GlassCard>
+          <Text style={[T.headingSm, { marginBottom:12 }]}>TRIP DETAILS</Text>
+          <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:10 }}>
             <Ionicons name="time-outline" size={18} color={C.textSecondary} />
-            <Text style={T.bodyMd}>Trip starts: {tripStartTime}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="navigate-outline" size={18} color={C.textSecondary} />
             <Text style={T.bodyMd}>
-              {trip?.trip_from_stop?.name || 'Start'} → {trip?.trip_to_stop?.name || 'End'}
+              Trip starts: {scheduledTrip?.planned_start_at ? new Date(scheduledTrip.planned_start_at).toLocaleString() : 'Not scheduled'}
             </Text>
           </View>
+          <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:6 }}>
+            <Ionicons name="navigate-outline" size={18} color={C.textSecondary} />
+            <Text style={T.bodyMd}>{pickupName} → {dropoffName}</Text>
+          </View>
+          {pickupTime && (
+            <Text style={[T.bodySm, { marginLeft:26 }]}>Pickup at: {pickupTime.toLocaleTimeString()}</Text>
+          )}
+          {dropoffTime && (
+            <Text style={[T.bodySm, { marginLeft:26 }]}>Dropoff at: {dropoffTime.toLocaleTimeString()}</Text>
+          )}
         </GlassCard>
 
-        {/* Your Booking (Seat, Pickup/Dropoff) */}
-        <GlassCard style={styles.card}>
-          <Text style={[T.headingSm, { marginBottom: 12 }]}>YOUR BOOKING</Text>
-          <View style={styles.bookingRow}>
-            <View style={styles.iconCircleGold}>
-              <Ionicons name="log-in-outline" size={14} color={C.gold} />
-            </View>
-            <Text style={T.bodyMd}>Pickup: {pickupStopName}</Text>
-          </View>
-          <View style={styles.bookingRow}>
-            <View style={styles.iconCircleBlue}>
-              <Ionicons name="log-out-outline" size={14} color={C.blue} />
-            </View>
-            <Text style={T.bodyMd}>Dropoff: {dropoffStopName}</Text>
-          </View>
-          <View style={styles.bookingRow}>
-            <View style={styles.iconCircleGold}>
-              <Ionicons name="grid-outline" size={14} color={C.gold} />
-            </View>
-            <Text style={T.bodyMd}>Seat: {seatNumber || 'Not assigned'}</Text>
-          </View>
-        </GlassCard>
-
-        {/* Live Progress (with timeline style) */}
-        {liveProgress && (
-          <GlassCard style={styles.card}>
-            <Text style={[T.headingSm, { marginBottom: 12 }]}>LIVE TRIP STATUS</Text>
-            <View style={styles.liveRow}>
-              <Text style={T.bodySm}>
-                Boarding: {liveProgress.boarding_scan_completed ? '✅ Completed' : '⏳ Not yet'}
-              </Text>
-              <Text style={T.bodySm}>
-                Drop: {liveProgress.drop_scan_completed ? '✅ Completed' : '⏳ Not yet'}
-              </Text>
-            </View>
-            {liveProgress.trip_completed && (
-              <Text style={[styles.completedText, { marginBottom: 8 }]}>Trip completed</Text>
-            )}
-            {liveProgress.current_progress_stop && (
-              <View style={styles.currentStop}>
-                <Text style={T.bodySm}>Current stop:</Text>
-                <Text style={[T.bodyMd, { color: C.gold }]}>
-                  {liveProgress.current_progress_stop.stop?.name}
-                </Text>
-                <Text style={T.bodySm}>
-                  Status: {liveProgress.current_progress_stop.event_status}
-                </Text>
-                {liveProgress.current_progress_stop.actual_time && (
-                  <Text style={T.bodySm}>
-                    Actual time:{' '}
-                    {new Date(liveProgress.current_progress_stop.actual_time).toLocaleTimeString()}
+        {/* Seats List with per-seat QR */}
+        <GlassCard>
+          <Text style={[T.headingSm, { marginBottom:12 }]}>SEATS</Text>
+          {session.bookings?.map(booking => {
+            const isSelfBooking = !booking.traveller_profile_id && !booking.traveller_name_snapshot && booking.traveller_relationship_label_snapshot === 'Self';
+            const travellerName = isSelfBooking ? 'You' : (booking.traveller_name_snapshot || 'N/A');
+            const relationship = booking.traveller_relationship_label_snapshot || (isSelfBooking ? 'Self' : null);
+            const qr = qrByBookingId[booking.id];
+            const isActive = booking.booking_status === 'booked' || booking.booking_status === 'boarded';
+            return (
+              <View key={booking.id} style={{ marginBottom:20, paddingBottom:16, borderBottomWidth:1, borderColor:C.border }}>
+                <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center' }}>
+                  <Text style={T.bodyLg}>Seat {booking.seat_number}</Text>
+                  <Text style={{ color: booking.booking_status === 'booked' ? C.green : (booking.booking_status === 'cancelled' ? C.red : C.textSecondary) }}>
+                    {booking.booking_status.toUpperCase()}
                   </Text>
+                </View>
+                <Text style={T.bodySm}>Traveller: {travellerName}</Text>
+                {relationship && <Text style={T.bodySm}>Relationship: {relationship}</Text>}
+                {booking.otp && <Text style={[T.mono, { marginTop:4 }]}>OTP: {booking.otp}</Text>}
+
+                {/* Cancel seat button (only if confirmed and trip not started) */}
+                {booking.booking_status === 'booked' && canCancelWhole && (
+                  <TouchableOpacity onPress={() => handleCancelSeat(booking.id)} disabled={cancellingSeat === booking.id} style={{ marginTop:8 }}>
+                    <Text style={{ color:C.red }}>Cancel this seat</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Refund info */}
+                {booking.refund && <Text style={{ color:C.gold, marginTop:4 }}>Refund: {booking.refund.status}</Text>}
+
+                {/* QR code for this seat (active only) */}
+                {isActive && qr?.qr_token && (
+                  <View style={{ alignItems: 'center', marginTop: 12 }}>
+                    <Text style={[T.headingSm, { marginBottom: 6 }]}>Boarding Pass - Seat {booking.seat_number}</Text>
+                    <QRCode value={qr.qr_token} size={160} color={C.textPrimary} backgroundColor="transparent" />
+                    <TouchableOpacity
+                      onPress={async () => { try { await Share.share({ message: qr.qr_token }); } catch(e) {} }}
+                      style={{ marginTop: 8 }}
+                    >
+                      <LinearGradient colors={[C.surfaceHigh, C.surfaceHigh]} style={{ paddingVertical:8, paddingHorizontal:16, flexDirection:'row', alignItems:'center', borderRadius:20, borderWidth:1, borderColor:C.border, gap:6 }}>
+                        <Ionicons name="share-outline" size={14} color={C.gold} />
+                        <Text style={[T.bodySm, { color:C.gold }]}>Share</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
-            )}
+            );
+          })}
+        </GlassCard>
 
-            {liveProgress.segment_stops && liveProgress.segment_stops.length > 0 && (
-              <View style={{ marginTop: 8 }}>
-                <Text style={[T.headingSm, { marginBottom: 12 }]}>YOUR SEGMENT STOPS</Text>
-                {liveProgress.segment_stops.map((stop, idx) => {
-                  let statusColor = C.textMuted;
-                  let statusIcon = 'radio-button-off-outline';
-                  if (stop.stop_status === 'boarded_here') {
-                    statusColor = C.green;
-                    statusIcon = 'checkmark-circle-outline';
-                  } else if (stop.stop_status === 'dropped_here') {
-                    statusColor = C.blue;
-                    statusIcon = 'flag-outline';
-                  } else if (stop.stop_status === 'arrived') {
-                    statusColor = C.gold;
-                    statusIcon = 'location-outline';
-                  } else if (stop.stop_status === 'departed') {
-                    statusColor = C.goldLight;
-                    statusIcon = 'car-outline';
-                  }
-                  return (
-                    <View key={stop.route_stop_id || idx} style={styles.stopTimeline}>
-                      <Ionicons name={statusIcon} size={16} color={statusColor} />
-                      <View style={{ flex: 1, marginLeft: 10 }}>
-                        <View style={styles.stopHeader}>
-                          <Text style={[T.bodyMd, { color: statusColor }]}>{stop.stop.name}</Text>
-                          <Text style={T.bodySm}>
-                            {stop.planned_time_at_stop
-                              ? new Date(stop.planned_time_at_stop).toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : '--:--'}
-                          </Text>
-                        </View>
-                        {stop.actual_arrival_time && (
-                          <Text style={[T.bodySm, { color: C.green }]}>
-                            Arrived: {new Date(stop.actual_arrival_time).toLocaleTimeString()}
-                          </Text>
-                        )}
-                        {stop.actual_departure_time && (
-                          <Text style={[T.bodySm, { color: C.blue }]}>
-                            Departed: {new Date(stop.actual_departure_time).toLocaleTimeString()}
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-          </GlassCard>
-        )}
-
-        {/* QR Code (Boarding Pass) */}
-        {qrData && (
-          <GlassCard style={[styles.card, styles.qrContainer]}>
-            <Text style={[T.headingSm, { marginBottom: 8 }]}>BOARDING PASS</Text>
-            <QRCode value={qrData.qr_token} size={180} color={C.textPrimary} backgroundColor="transparent" />
-            <TouchableOpacity onPress={handleShareQR} style={styles.shareButton}>
-              <LinearGradient colors={[C.surfaceHigh, C.surfaceHigh]} style={styles.shareGradient}>
-                <Ionicons name="share-outline" size={16} color={C.gold} />
-                <Text style={[T.bodySm, { color: C.gold, marginLeft: 6 }]}>Share QR</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </GlassCard>
-        )}
-
-        {/* Rating Section */}
-        {canRate && (
-          <TouchableOpacity onPress={() => setRatingModalVisible(true)} style={styles.rateButton}>
-            <LinearGradient colors={[C.goldDim, C.goldDim]} style={styles.rateGradient}>
+        {/* Rating Button */}
+        {hasCompletedBooking && (
+          <TouchableOpacity onPress={() => setRatingModalVisible(true)} style={{ marginBottom:8, borderRadius:18, overflow:'hidden' }}>
+            <LinearGradient colors={[C.goldDim, C.goldDim]} style={{ paddingVertical:14, flexDirection:'row', justifyContent:'center', alignItems:'center', borderWidth:1, borderColor:C.gold, borderRadius:18 }}>
               <Ionicons name="star-outline" size={20} color={C.gold} />
-              <Text style={[T.bodyMd, { color: C.gold, marginLeft: 8 }]}>Rate your trip</Text>
+              <Text style={[T.bodyMd, { color:C.gold, marginLeft:8 }]}>Rate your trip</Text>
             </LinearGradient>
           </TouchableOpacity>
         )}
-        {existingRating && (
-          <GlassCard style={styles.card}>
-            <Text style={[T.headingSm, { marginBottom: 8 }]}>YOUR RATING</Text>
-            <View style={styles.ratingRow}>
-              {renderStars(existingTripRating, 18)}
-              <Text style={T.bodyMd}>Trip</Text>
-            </View>
-            <View style={styles.ratingRow}>
-              {renderStars(existingDriverRating, 18)}
-              <Text style={T.bodyMd}>Driver</Text>
-            </View>
-            {existingRating.review_text ? (
-              <Text style={[T.bodySm, { marginTop: 8 }]}>{existingRating.review_text}</Text>
-            ) : null}
-          </GlassCard>
-        )}
       </ScrollView>
 
-      {/* Rating Modal (Redesigned) */}
+      {/* Rating Modal (unchanged) */}
       <Modal visible={ratingModalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <View style={{ flex:1, backgroundColor:'rgba(0,0,0,0.85)', justifyContent:'center', alignItems:'center', padding:24 }}>
+          <LinearGradient colors={[C.surface, C.surfaceUp]} style={{ borderRadius:28, padding:24, width:screenWidth-48, borderWidth:1, borderColor:C.border }}>
             <Text style={T.displayMd}>Rate your trip</Text>
-            <Text style={[T.headingSm, { marginTop: 12, marginBottom: 6 }]}>Trip rating</Text>
-            <View style={styles.starRow}>
-              {[1, 2, 3, 4, 5].map((star) => (
+            <Text style={[T.headingSm, { marginTop:12, marginBottom:6 }]}>Trip rating</Text>
+            <View style={{ flexDirection:'row', justifyContent:'center', marginBottom:4 }}>
+              {[1,2,3,4,5].map(star => (
                 <TouchableOpacity key={star} onPress={() => setTripRating(star)}>
-                  <Ionicons
-                    name={star <= tripRating ? 'star' : 'star-outline'}
-                    size={32}
-                    color={C.gold}
-                    style={{ marginHorizontal: 4 }}
-                  />
+                  <Ionicons name={star <= tripRating ? 'star' : 'star-outline'} size={32} color={C.gold} style={{ marginHorizontal:4 }} />
                 </TouchableOpacity>
               ))}
             </View>
-            <Text style={[T.headingSm, { marginTop: 12, marginBottom: 6 }]}>Driver rating</Text>
-            <View style={styles.starRow}>
-              {[1, 2, 3, 4, 5].map((star) => (
+            <Text style={[T.headingSm, { marginTop:12, marginBottom:6 }]}>Driver rating</Text>
+            <View style={{ flexDirection:'row', justifyContent:'center', marginBottom:4 }}>
+              {[1,2,3,4,5].map(star => (
                 <TouchableOpacity key={star} onPress={() => setDriverRating(star)}>
-                  <Ionicons
-                    name={star <= driverRating ? 'star' : 'star-outline'}
-                    size={32}
-                    color={C.gold}
-                    style={{ marginHorizontal: 4 }}
-                  />
+                  <Ionicons name={star <= driverRating ? 'star' : 'star-outline'} size={32} color={C.gold} style={{ marginHorizontal:4 }} />
                 </TouchableOpacity>
               ))}
             </View>
             <TextInput
-              style={styles.reviewInput}
+              style={{ borderWidth:1, borderColor:C.border, backgroundColor:C.surfaceUp, borderRadius:16, padding:14, color:C.textPrimary, marginTop:16, textAlignVertical:'top' }}
               placeholder="Write a review (optional)"
               placeholderTextColor={C.textMuted}
               value={reviewText}
@@ -550,114 +377,15 @@ export default function BookingDetailScreen({ route, navigation }) {
               multiline
               numberOfLines={3}
             />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity onPress={() => setRatingModalVisible(false)} style={styles.modalCancel}>
+            <View style={{ flexDirection:'row', justifyContent:'space-between', marginTop:20, gap:12 }}>
+              <TouchableOpacity onPress={() => setRatingModalVisible(false)} style={{ flex:1, paddingVertical:14, borderRadius:16, backgroundColor:C.surfaceHigh, alignItems:'center', borderWidth:1, borderColor:C.border }}>
                 <Text style={T.bodyMd}>Cancel</Text>
               </TouchableOpacity>
-              <AnimatedButton
-                title={submittingRating ? 'Submitting...' : 'Submit'}
-                onPress={handleSubmitRating}
-                disabled={submittingRating}
-                style={{ width: 100 }}
-              />
+              <AnimatedButton title={submittingRating ? 'Submitting...' : 'Submit'} onPress={handleSubmitRating} disabled={submittingRating} style={{ flex:1 }} />
             </View>
-          </View>
+          </LinearGradient>
         </View>
       </Modal>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 40, gap: 16 },
-  card: { padding: 18 },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  statusText: { fontSize: 24, fontWeight: '700', color: C.textPrimary },
-  holdExpiry: { color: C.gold, fontSize: 11, marginTop: 6 },
-  otp: { fontSize: 28, fontWeight: '800', color: C.gold, letterSpacing: 3, marginVertical: 8 },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  tripHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  bookingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 12 },
-  iconCircleGold: {
-    width: 28,
-    height: 28,
-    borderRadius: 10,
-    backgroundColor: C.goldDim,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconCircleBlue: {
-    width: 28,
-    height: 28,
-    borderRadius: 10,
-    backgroundColor: C.blueDim,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  liveRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  completedText: { color: C.green, fontWeight: '600', fontSize: 12 },
-  currentStop: { backgroundColor: C.surfaceHigh, borderRadius: 14, padding: 12, marginBottom: 12 },
-  stopTimeline: { flexDirection: 'row', marginBottom: 16, alignItems: 'flex-start' },
-  stopHeader: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap' },
-  qrContainer: { alignItems: 'center' },
-  shareButton: { marginTop: 16, width: '100%', borderRadius: 14, overflow: 'hidden' },
-  shareGradient: {
-    paddingVertical: 12,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: C.surfaceHigh,
-    borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: 14,
-  },
-  rateButton: { marginBottom: 8, borderRadius: 18, overflow: 'hidden' },
-  rateGradient: {
-    paddingVertical: 14,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: C.goldDim,
-    borderWidth: 1,
-    borderColor: C.gold,
-    borderRadius: 18,
-  },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  modalContent: {
-    backgroundColor: C.surface,
-    borderRadius: 28,
-    padding: 24,
-    width: screenWidth - 48,
-    borderWidth: 1,
-    borderColor: C.borderStrong,
-  },
-  starRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
-  reviewInput: {
-    borderWidth: 1,
-    borderColor: C.border,
-    backgroundColor: C.surfaceUp,
-    borderRadius: 16,
-    padding: 14,
-    color: C.textPrimary,
-    marginTop: 16,
-    textAlignVertical: 'top',
-  },
-  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20, gap: 12 },
-  modalCancel: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 16,
-    backgroundColor: C.surfaceHigh,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-});
