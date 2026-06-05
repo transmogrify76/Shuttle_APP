@@ -15,6 +15,7 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import TravellerProfilesScreen from '../screens/TravellerProfilesScreen';
+import CurrentTripScreen from '../screens/CurrentTripScreen';
 // RFID Screens
 import RfidWalletScreen from '../screens/RfidWalletScreen';
 import RfidLedgerScreen from '../screens/RfidLedgerScreen';
@@ -45,6 +46,7 @@ export default function AppNavigator() {
           <Stack.Screen name="Transactions" component={TransactionsScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
           <Stack.Screen name="TravellerProfiles" component={TravellerProfilesScreen} />
+          <Stack.Screen name="CurrentTrip" component={CurrentTripScreen} />
           {/* RFID screens */}
           <Stack.Screen name="RfidWallet" component={RfidWalletScreen} />
           <Stack.Screen name="RfidLedger" component={RfidLedgerScreen} />

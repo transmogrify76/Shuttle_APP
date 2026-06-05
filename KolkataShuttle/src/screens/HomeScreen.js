@@ -26,7 +26,12 @@ import {
   listScheduledTrips,
   getRouteDetails,
 } from '../services/routeApi';
-import { previewFare, getDriverVehicleInfo, getLegAvailableSeats } from '../services/bookingApi';
+import {
+  previewFare,
+  getDriverVehicleInfo,
+  getLegAvailableSeats,
+  getPassengerProfile,
+} from '../services/bookingApi';
 import { getRouteBetweenStops } from '../services/routingApi';
 import { fetchProfile } from '../services/profileApi';
 
@@ -473,19 +478,7 @@ export default function HomeScreen({ navigation }) {
   const { user } = useAuth();
   const [userName, setUserName] = useState('');
   const [profileLoading, setProfileLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const profile = await fetchProfile();
-        setUserName(profile?.full_name || user?.email?.split('@')[0] || 'User');
-      } catch {
-        setUserName(user?.email?.split('@')[0] || 'User');
-      } finally {
-        setProfileLoading(false);
-      }
-    })();
-  }, [user]);
+  const [hasPassengerProfile, setHasPassengerProfile] = useState(false);
 
   const [routesData, setRoutesData] = useState([]);
   const [selectedRoute, setSelectedRoute] = useState(null);
@@ -615,7 +608,38 @@ export default function HomeScreen({ navigation }) {
     } else setFare(null);
   }, [selectedTrip, pickupStopId, dropoffStopId, selectedRoute]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const profile = await fetchProfile();
+        setUserName(profile?.full_name || user?.email?.split('@')[0] || 'User');
+        // Check passenger profile existence
+        try {
+          const passengerProfile = await getPassengerProfile();
+          setHasPassengerProfile(!!passengerProfile?.id);
+        } catch { setHasPassengerProfile(false); }
+      } catch {
+        setUserName(user?.email?.split('@')[0] || 'User');
+      } finally {
+        setProfileLoading(false);
+      }
+    })();
+  }, [user]);
+
   const handleConfirm = async () => {
+    // Passenger profile check
+    if (!hasPassengerProfile) {
+      Alert.alert(
+        'Profile Required',
+        'Please complete your passenger profile before booking.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Create Profile', onPress: () => navigation.navigate('Profile') }
+        ]
+      );
+      return;
+    }
+
     if (!selectedTrip || !pickupStopId || !dropoffStopId || !fare) {
       Alert.alert('Incomplete', 'Select pickup, dropoff, and a ride first');
       return;
@@ -678,7 +702,7 @@ export default function HomeScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 50 }}
         >
-          {/* Welcome Header – UPDATED with Travellers button */}
+          {/* Welcome Header with travellers and profile buttons */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, marginTop: 4 }}>
             <View>
               <Text style={[T.headingSm, { marginBottom: 6 }]}>Good morning</Text>
@@ -688,7 +712,6 @@ export default function HomeScreen({ navigation }) {
               }
             </View>
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              {/* Travellers button – NEW */}
               <TouchableOpacity
                 onPress={() => navigation.navigate('TravellerProfiles')}
                 style={{
@@ -699,7 +722,6 @@ export default function HomeScreen({ navigation }) {
               >
                 <Ionicons name="people-outline" size={20} color={C.gold} />
               </TouchableOpacity>
-              {/* Profile button – unchanged */}
               <TouchableOpacity
                 onPress={() => navigation.navigate('Profile')}
                 style={{
@@ -713,7 +735,7 @@ export default function HomeScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Rest of the UI unchanged */}
+          {/* Route Selector */}
           <Text style={[T.headingSm, { marginBottom: 10 }]}>Route</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }} contentContainerStyle={{ gap: 8 }}>
             {routesData.map((route, idx) => {
@@ -745,10 +767,12 @@ export default function HomeScreen({ navigation }) {
             })}
           </ScrollView>
 
+          {/* Stop Selectors */}
           <Text style={[T.headingSm, { marginBottom: 10 }]}>Journey</Text>
           <StopSelector stops={stops} selectedId={pickupStopId} onSelect={setPickupStopId} label="Pickup stop" icon="navigate-circle" accent="gold" />
           <StopSelector stops={stops} selectedId={dropoffStopId} onSelect={setDropoffStopId} label="Dropoff stop" icon="location" accent="blue" />
 
+          {/* Fare Card */}
           {fare && (
             <LinearGradient
               colors={['rgba(201,168,76,0.15)', 'rgba(201,168,76,0.05)']}
@@ -771,6 +795,7 @@ export default function HomeScreen({ navigation }) {
             </LinearGradient>
           )}
 
+          {/* Available Buses */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, marginBottom: 12 }}>
             <Text style={[T.headingSm]}>Available Buses</Text>
             {loadingSeats && (
@@ -804,6 +829,7 @@ export default function HomeScreen({ navigation }) {
             ))
           )}
 
+          {/* CTA Button */}
           <TouchableOpacity
             onPress={handleConfirm}
             disabled={!canBook}
@@ -841,6 +867,7 @@ export default function HomeScreen({ navigation }) {
         </ScrollView>
       </Animated.View>
 
+      {/* Floating restore button */}
       {!sheetVisible && (
         <TouchableOpacity
           onPress={() => setSheetVisible(true)}

@@ -23,6 +23,36 @@ const handleResponse = async (response, url) => {
   }
 };
 
+// ========== PASSENGER PROFILE (Self) ==========
+export const getPassengerProfile = async () => {
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE_URL}/passenger/profile`;
+  const response = await fetch(url, { headers });
+  return handleResponse(response, url);
+};
+
+export const createPassengerProfile = async (data) => {
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE_URL}/passenger/profile`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response, url);
+};
+
+export const updatePassengerProfile = async (data) => {
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE_URL}/passenger/profile`;
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response, url);
+};
+
 // ========== TRAVELLER PROFILES ==========
 export const getTravellerProfiles = async (activeOnly = true) => {
   const headers = await getAuthHeaders();
@@ -60,7 +90,7 @@ export const deleteTravellerProfile = async (profileId) => {
   return handleResponse(response, url);
 };
 
-// ========== BOOKING SESSIONS ==========
+// ========== BOOKING SESSIONS (New Canonical APIs) ==========
 export const createBookingSession = async (data) => {
   const headers = await getAuthHeaders();
   const url = `${API_BASE_URL}/passenger/booking-sessions`;
@@ -112,45 +142,29 @@ export const cancelBookingSessionSeat = async (sessionId, bookingId) => {
   return handleResponse(response, url);
 };
 
-// ========== OTHER REUSED APIs (unchanged) ==========
-export const previewFare = async ({ route_id, pickup_stop_id, dropoff_stop_id }) => {
+// ========== CURRENT TRIP APIs (Booking Session Based) ==========
+export const getCurrentBookingSessions = async () => {
   const headers = await getAuthHeaders();
-  const url = `${API_BASE_URL}/passenger/fare/preview`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ route_id, pickup_stop_id, dropoff_stop_id }),
-  });
+  const url = `${API_BASE_URL}/passenger/booking-sessions/current`;
+  const response = await fetch(url, { headers });
   return handleResponse(response, url);
 };
 
-export const getLegAvailableSeats = async (tripId, routeId, pickupStopId, dropoffStopId) => {
+export const getBookingSessionCurrentStatus = async (sessionId) => {
   const headers = await getAuthHeaders();
-  const url = `${API_BASE_URL}/passenger/scheduled-trips/${tripId}/available-seats`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      route_id: routeId,
-      pickup_stop_id: pickupStopId,
-      dropoff_stop_id: dropoffStopId,
-    }),
-  });
+  const url = `${API_BASE_URL}/passenger/booking-sessions/${sessionId}/current-status`;
+  const response = await fetch(url, { headers });
   return handleResponse(response, url);
 };
 
-export const getDriverVehicleInfo = async (tripId) => {
+export const getBookingSessionLiveLocation = async (sessionId) => {
   const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/passenger/scheduled-trips/${tripId}/driver-vehicle-info`, { headers });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.detail?.message || 'Failed to fetch driver info');
-  if (data.driver_average_rating !== undefined && data.driver_average_rating !== null) {
-    data.driver_average_rating = parseFloat(data.driver_average_rating);
-  }
-  return data;
+  const url = `${API_BASE_URL}/passenger/booking-sessions/${sessionId}/live-location`;
+  const response = await fetch(url, { headers });
+  return handleResponse(response, url);
 };
 
-// Keep old individual booking endpoints only for QR and rating (they still work with bookingId)
+// ========== LEGACY / OLD APIs (keep for QR, rating, invoice – still needed) ==========
 export const getBookingQR = async (bookingId) => {
   const headers = await getAuthHeaders();
   const url = `${API_BASE_URL}/passenger/bookings/${bookingId}/qr`;
@@ -177,9 +191,120 @@ export const getBookingRating = async (bookingId) => {
   return handleResponse(response, url);
 };
 
+export const getInvoice = async (bookingId) => {
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE_URL}/passenger/bookings/${bookingId}/invoice`;
+  const response = await fetch(url, { headers });
+  return handleResponse(response, url);
+};
+
+// ========== TRIP DISCOVERY APIs (from Trip doc) ==========
+export const listRoutes = async (activeOnly = true, hasAc = null) => {
+  const headers = await getAuthHeaders();
+  let url = `${API_BASE_URL}/passenger/routes?active_only=${activeOnly}`;
+  if (hasAc !== null) url += `&has_ac=${hasAc}`;
+  const response = await fetch(url, { headers });
+  return handleResponse(response, url);
+};
+
+export const getRouteDetails = async (routeId) => {
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE_URL}/passenger/routes/${routeId}`;
+  const response = await fetch(url, { headers });
+  return handleResponse(response, url);
+};
+
+export const listScheduledTrips = async (routeId = null, onlyFuture = true) => {
+  const headers = await getAuthHeaders();
+  let url = `${API_BASE_URL}/passenger/scheduled-trips?only_future=${onlyFuture}`;
+  if (routeId) url += `&route_id=${routeId}`;
+  const response = await fetch(url, { headers });
+  return handleResponse(response, url);
+};
+
 export const getScheduledTripDetail = async (tripId) => {
   const headers = await getAuthHeaders();
   const url = `${API_BASE_URL}/passenger/scheduled-trips/${tripId}`;
   const response = await fetch(url, { headers });
   return handleResponse(response, url);
 };
+
+export const getDriverVehicleInfo = async (tripId) => {
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE_URL}/passenger/scheduled-trips/${tripId}/driver-vehicle-info`;
+  const response = await fetch(url, { headers });
+  return handleResponse(response, url);
+};
+
+export const previewFare = async ({ route_id, pickup_stop_id, dropoff_stop_id }) => {
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE_URL}/passenger/fare/preview`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ route_id, pickup_stop_id, dropoff_stop_id }),
+  });
+  return handleResponse(response, url);
+};
+
+export const getLegAvailableSeats = async (tripId, routeId, pickupStopId, dropoffStopId, seatNumber = null) => {
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE_URL}/passenger/scheduled-trips/${tripId}/available-seats`;
+  const body = {
+    route_id: routeId,
+    pickup_stop_id: pickupStopId,
+    dropoff_stop_id: dropoffStopId,
+  };
+  if (seatNumber !== null) body.seat_number = seatNumber;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+  return handleResponse(response, url);
+};
+
+// Legacy individual booking endpoints (kept for compatibility, but not used in new flows)
+export const getUpcomingBookings = async () => {
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE_URL}/passenger/bookings/upcoming`;
+  const response = await fetch(url, { headers });
+  return handleResponse(response, url);
+};
+
+export const getCurrentBookings = async () => {
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE_URL}/passenger/bookings/current`;
+  const response = await fetch(url, { headers });
+  return handleResponse(response, url);
+};
+
+export const getPassengerHistory = async () => {
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE_URL}/passenger/history`;
+  const response = await fetch(url, { headers });
+  return handleResponse(response, url);
+};
+
+export const getBookingDetail = async (bookingId) => {
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE_URL}/passenger/bookings/${bookingId}`;
+  const response = await fetch(url, { headers });
+  return handleResponse(response, url);
+};
+
+export const cancelBooking = async (bookingId) => {
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE_URL}/passenger/bookings/${bookingId}/cancel`;
+  const response = await fetch(url, { method: 'POST', headers });
+  return handleResponse(response, url);
+};
+
+export const getBookingCurrentStatus = async (bookingId) => {
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE_URL}/passenger/bookings/${bookingId}/current-status`;
+  const response = await fetch(url, { headers });
+  return handleResponse(response, url);
+};
+
+

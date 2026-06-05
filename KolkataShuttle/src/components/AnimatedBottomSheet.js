@@ -8,7 +8,7 @@ import {
   Text,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { C } from '../styles/design'; // assuming design tokens are imported
+import { C } from '../styles/design'; 
 
 const { height: screenHeight } = Dimensions.get('window');
 const BOTTOM_SHEET_HEIGHT = screenHeight * 0.65;

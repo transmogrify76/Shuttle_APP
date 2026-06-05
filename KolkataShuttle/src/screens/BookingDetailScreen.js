@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator,
-  Share, StyleSheet, Dimensions, TextInput,
+  Share, Dimensions, TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -63,23 +63,21 @@ export default function BookingDetailScreen({ route, navigation }) {
   const loadData = async () => {
     try {
       setLoading(true);
-
-      // 1. Fetch session detail
+      // 1. Fetch session detail (the whole group)
       const sessionRes = await getBookingSessionDetail(sessionId);
       const sessionData = sessionRes.booking_session || sessionRes;
       setSession(sessionData);
 
-      // 2. Fetch scheduled trip details
+      // 2. Fetch scheduled trip details (for stop names, times, driver/vehicle)
       const tripId = sessionData.scheduled_trip_id;
-      if (!tripId) throw new Error('Missing scheduled_trip_id in session');
-      const tripData = await getScheduledTripDetail(tripId);
-      setScheduledTrip(tripData);
+      if (tripId) {
+        const tripData = await getScheduledTripDetail(tripId);
+        setScheduledTrip(tripData);
+        const driverInfo = await getDriverVehicleInfo(tripId);
+        setDriverVehicleInfo(driverInfo);
+      }
 
-      // 3. Fetch driver & vehicle info
-      const driverInfo = await getDriverVehicleInfo(tripId);
-      setDriverVehicleInfo(driverInfo);
-
-      // 4. Fetch QR for each active seat (booked or boarded)
+      // 3. Fetch QR for each active seat (booked or boarded) – using booking.id, not sessionId
       const activeBookings = sessionData.bookings?.filter(b =>
         b.booking_status === 'booked' || b.booking_status === 'boarded'
       ) || [];
@@ -89,14 +87,12 @@ export default function BookingDetailScreen({ route, navigation }) {
           try {
             const qr = await getBookingQR(booking.id);
             qrMap[booking.id] = qr;
-          } catch (e) {
-            console.log(`QR not available for booking ${booking.id}`);
-          }
+          } catch (e) { console.log(`QR not available for booking ${booking.id}`); }
         })
       );
       setQrByBookingId(qrMap);
 
-      // 5. Check for rating on completed bookings (optional: pick first completed)
+      // 4. Rating – per completed booking
       const completedBooking = sessionData.bookings?.find(b => b.booking_status === 'completed');
       if (completedBooking) {
         try {
@@ -105,37 +101,34 @@ export default function BookingDetailScreen({ route, navigation }) {
         } catch (e) {}
       }
     } catch (err) {
-      console.error(err);
-      Alert.alert('Error', err.message || 'Failed to load booking details');
+      Alert.alert('Error', err.message);
       navigation.goBack();
     } finally {
       setLoading(false);
     }
   };
 
-  // Helper: get pickup/dropoff stop names and planned times from scheduledTrip using session IDs
-  const getPickupDropoffInfo = () => {
-    if (!scheduledTrip || !session) return { pickupName: 'Pickup', dropoffName: 'Dropoff', pickupTime: null, dropoffTime: null };
+  // Derive the actual pickup/dropoff stop names using session snapshot IDs
+  const getPickupDropoff = () => {
+    if (!scheduledTrip || !session) return { pickup: 'Pickup', dropoff: 'Dropoff' };
     const stops = scheduledTrip.stops || [];
-    // Find pickup stop
     let pickupStop = stops.find(s => s.stop?.id === session.pickup_stop_id);
     if (!pickupStop && session.pickup_sequence_no_snapshot) {
       pickupStop = stops.find(s => s.sequence_no === session.pickup_sequence_no_snapshot);
     }
-    // Find dropoff stop
     let dropoffStop = stops.find(s => s.stop?.id === session.dropoff_stop_id);
     if (!dropoffStop && session.dropoff_sequence_no_snapshot) {
       dropoffStop = stops.find(s => s.sequence_no === session.dropoff_sequence_no_snapshot);
     }
     return {
-      pickupName: pickupStop?.stop?.name || 'Pickup',
-      dropoffName: dropoffStop?.stop?.name || 'Dropoff',
-      pickupTime: pickupStop?.planned_time_at_stop ? new Date(pickupStop.planned_time_at_stop) : null,
-      dropoffTime: dropoffStop?.planned_time_at_stop ? new Date(dropoffStop.planned_time_at_stop) : null,
+      pickup: pickupStop?.stop?.name || 'Pickup',
+      dropoff: dropoffStop?.stop?.name || 'Dropoff',
+      pickupTime: pickupStop?.planned_time_at_stop,
+      dropoffTime: dropoffStop?.planned_time_at_stop,
     };
   };
 
-  const { pickupName, dropoffName, pickupTime, dropoffTime } = getPickupDropoffInfo();
+  const { pickup, dropoff, pickupTime, dropoffTime } = getPickupDropoff();
 
   const handleCancelWholeSession = async () => {
     Alert.alert('Cancel Entire Booking', 'All seats will be cancelled and refund requested.', [
@@ -237,7 +230,7 @@ export default function BookingDetailScreen({ route, navigation }) {
           <Text style={T.bodySm}>Payment status: {payment?.effective_status || 'N/A'}</Text>
         </GlassCard>
 
-        {/* Driver & Vehicle */}
+        {/* Driver & Vehicle Card */}
         {driverVehicleInfo && (
           <GlassCard>
             <Text style={[T.headingSm, { marginBottom:8 }]}>DRIVER & VEHICLE</Text>
@@ -255,15 +248,13 @@ export default function BookingDetailScreen({ route, navigation }) {
             </View>
             <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:10 }}>
               <Ionicons name="car-outline" size={18} color={C.textSecondary} />
-              <Text style={T.bodyMd}>
-                {driverVehicleInfo.vehicle_name || 'Bus'} • {driverVehicleInfo.vehicle_registration_number || ''}
-              </Text>
+              <Text style={T.bodyMd}>{driverVehicleInfo.vehicle_name || 'Bus'} • {driverVehicleInfo.vehicle_registration_number || ''}</Text>
             </View>
             <Text style={[T.bodySm, { marginLeft:26 }]}>Total seats: {driverVehicleInfo.vehicle_total_seat || '?'}</Text>
           </GlassCard>
         )}
 
-        {/* Trip Details */}
+        {/* Trip Details Card (with correct pickup/dropoff) */}
         <GlassCard>
           <Text style={[T.headingSm, { marginBottom:12 }]}>TRIP DETAILS</Text>
           <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:10 }}>
@@ -274,17 +265,13 @@ export default function BookingDetailScreen({ route, navigation }) {
           </View>
           <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:6 }}>
             <Ionicons name="navigate-outline" size={18} color={C.textSecondary} />
-            <Text style={T.bodyMd}>{pickupName} → {dropoffName}</Text>
+            <Text style={T.bodyMd}>{pickup} → {dropoff}</Text>
           </View>
-          {pickupTime && (
-            <Text style={[T.bodySm, { marginLeft:26 }]}>Pickup at: {pickupTime.toLocaleTimeString()}</Text>
-          )}
-          {dropoffTime && (
-            <Text style={[T.bodySm, { marginLeft:26 }]}>Dropoff at: {dropoffTime.toLocaleTimeString()}</Text>
-          )}
+          {pickupTime && <Text style={[T.bodySm, { marginLeft:26 }]}>Pickup time: {new Date(pickupTime).toLocaleTimeString()}</Text>}
+          {dropoffTime && <Text style={[T.bodySm, { marginLeft:26 }]}>Dropoff time: {new Date(dropoffTime).toLocaleTimeString()}</Text>}
         </GlassCard>
 
-        {/* Seats List with per-seat QR */}
+        {/* Seats Card – one card per seat, each with its own QR */}
         <GlassCard>
           <Text style={[T.headingSm, { marginBottom:12 }]}>SEATS</Text>
           {session.bookings?.map(booking => {
@@ -304,18 +291,12 @@ export default function BookingDetailScreen({ route, navigation }) {
                 <Text style={T.bodySm}>Traveller: {travellerName}</Text>
                 {relationship && <Text style={T.bodySm}>Relationship: {relationship}</Text>}
                 {booking.otp && <Text style={[T.mono, { marginTop:4 }]}>OTP: {booking.otp}</Text>}
-
-                {/* Cancel seat button (only if confirmed and trip not started) */}
                 {booking.booking_status === 'booked' && canCancelWhole && (
                   <TouchableOpacity onPress={() => handleCancelSeat(booking.id)} disabled={cancellingSeat === booking.id} style={{ marginTop:8 }}>
                     <Text style={{ color:C.red }}>Cancel this seat</Text>
                   </TouchableOpacity>
                 )}
-
-                {/* Refund info */}
                 {booking.refund && <Text style={{ color:C.gold, marginTop:4 }}>Refund: {booking.refund.status}</Text>}
-
-                {/* QR code for this seat (active only) */}
                 {isActive && qr?.qr_token && (
                   <View style={{ alignItems: 'center', marginTop: 12 }}>
                     <Text style={[T.headingSm, { marginBottom: 6 }]}>Boarding Pass - Seat {booking.seat_number}</Text>
@@ -336,7 +317,6 @@ export default function BookingDetailScreen({ route, navigation }) {
           })}
         </GlassCard>
 
-        {/* Rating Button */}
         {hasCompletedBooking && (
           <TouchableOpacity onPress={() => setRatingModalVisible(true)} style={{ marginBottom:8, borderRadius:18, overflow:'hidden' }}>
             <LinearGradient colors={[C.goldDim, C.goldDim]} style={{ paddingVertical:14, flexDirection:'row', justifyContent:'center', alignItems:'center', borderWidth:1, borderColor:C.gold, borderRadius:18 }}>

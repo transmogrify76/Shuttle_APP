@@ -220,7 +220,6 @@ export default function ProfileScreen({ navigation }) {
         </View>
       </ScrollView>
 
-      {/* Edit Name Modal */}
       <Modal visible={editModalVisible} transparent animationType="fade" onRequestClose={() => setEditModalVisible(false)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 }}>
           <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 24, padding: 20, width: '100%', borderWidth: 1, borderColor: C.border }}>
@@ -244,7 +243,6 @@ export default function ProfileScreen({ navigation }) {
         </View>
       </Modal>
 
-      {/* Create Profile Modal */}
       <Modal visible={createModalVisible} transparent animationType="fade" onRequestClose={() => {}}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 }}>
           <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 24, padding: 20, width: '100%', borderWidth: 1, borderColor: C.border }}>
