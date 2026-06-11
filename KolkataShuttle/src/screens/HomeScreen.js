@@ -705,7 +705,7 @@ export default function HomeScreen({ navigation }) {
           {/* Welcome Header with travellers and profile buttons */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, marginTop: 4 }}>
             <View>
-              <Text style={[T.headingSm, { marginBottom: 6 }]}>Good morning</Text>
+              <Text style={[T.headingSm, { marginBottom: 6 }]}>Welcome Back!</Text>
               {profileLoading
                 ? <Skeleton width={140} height={34} borderRadius={10} />
                 : <Text style={T.displayLg}>{userName}</Text>

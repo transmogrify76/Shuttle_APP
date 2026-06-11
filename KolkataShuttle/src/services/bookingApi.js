@@ -300,11 +300,11 @@ export const cancelBooking = async (bookingId) => {
   return handleResponse(response, url);
 };
 
-export const getBookingCurrentStatus = async (bookingId) => {
+export const getBookingCurrentStatus = async (bookingId) => {   
   const headers = await getAuthHeaders();
   const url = `${API_BASE_URL}/passenger/bookings/${bookingId}/current-status`;
   const response = await fetch(url, { headers });
   return handleResponse(response, url);
 };
 
-
+ 
