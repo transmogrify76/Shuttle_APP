@@ -26,7 +26,7 @@ export default function RfidRideDetailScreen({ route }) {
     } finally {
       setLoading(false);
     }
-  };
+  };  
 
   if (loading) return <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color={C.gold} /></View>;
   const ride = rideDetail.ride;

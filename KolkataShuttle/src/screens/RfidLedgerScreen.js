@@ -70,7 +70,7 @@ export default function RfidLedgerScreen() {
           data={items}
           keyExtractor={(_, i) => i.toString()}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}  
           refreshing={refreshing}
           onRefresh={onRefresh}
           onEndReached={loadMore}

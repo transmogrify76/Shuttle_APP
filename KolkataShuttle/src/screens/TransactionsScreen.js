@@ -163,7 +163,7 @@ export default function TransactionsScreen({ navigation }) {
           data={transactions}
           keyExtractor={(item) => item.payment_id}
           renderItem={renderTransactionItem}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+          contentContainerStyle={{ paddingBottom: 20 }}
           refreshing={refreshing}
           onRefresh={onRefresh}
         />

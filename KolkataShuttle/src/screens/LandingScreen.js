@@ -3,6 +3,7 @@ import { View, Text, Animated, Dimensions, Easing, TouchableOpacity } from 'reac
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { C, T } from '../styles/design';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
@@ -56,7 +57,14 @@ export default function LandingScreen({ navigation }) {
   const handleSignupPress = () => animateOut(signupScale, () => navigation.navigate('EmailEntry', { flow: 'signup' }));
 
   return (
-    <LinearGradient colors={[C.bg, C.surface]} style={{ flex: 1 }}>
+      <SafeAreaView
+    style={{ flex: 1, backgroundColor: C.bg }}
+    edges={['top']}
+  >
+    <LinearGradient
+      colors={[C.bg, C.surface]}
+      style={{ flex: 1 }}
+    >
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}>
         <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }, { translateY: slideUpAnim }], alignItems: 'center', width: '100%' }}>
           <Animated.View style={busStyle} className="mb-8">
@@ -83,5 +91,7 @@ export default function LandingScreen({ navigation }) {
         </Animated.View>
       </View>
     </LinearGradient>
-  );
+  </SafeAreaView>
+);
+  
 }

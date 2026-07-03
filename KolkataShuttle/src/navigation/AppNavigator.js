@@ -1,6 +1,9 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
+
 import { useAuth } from '../context/AuthContext';
+import BottomSafeLayout from '../components/BottomSafeLayout';
+
 import MainTabNavigator from './MainTabNavigator';
 import LandingScreen from '../screens/LandingScreen';
 import EmailEntryScreen from '../screens/EmailEntryScreen';
@@ -16,7 +19,7 @@ import TransactionsScreen from '../screens/TransactionsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import TravellerProfilesScreen from '../screens/TravellerProfilesScreen';
 import CurrentTripScreen from '../screens/CurrentTripScreen';
-// RFID Screens
+
 import RfidWalletScreen from '../screens/RfidWalletScreen';
 import RfidLedgerScreen from '../screens/RfidLedgerScreen';
 import RfidRechargeScreen from '../screens/RfidRechargeScreen';
@@ -26,41 +29,94 @@ import RfidRideDetailScreen from '../screens/RfidRideDetailScreen';
 
 const Stack = createStackNavigator();
 
+function safeScreenLayout({ children }) {
+  return <BottomSafeLayout>{children}</BottomSafeLayout>;
+}
+
 export default function AppNavigator() {
   const { user, loading } = useAuth();
 
-  if (loading) return null;
+  if (loading) {
+    return null;
+  }
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {user ? (
         <>
+          {/* Bottom tab navigator handles its own bottom safe area */}
           <Stack.Screen name="MainTabs" component={MainTabNavigator} />
-          <Stack.Screen name="SeatSelection" component={SeatSelectionScreen} />
-          <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
-          <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
-          <Stack.Screen name="SupportTickets" component={SupportTicketsScreen} />
-          <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
-          <Stack.Screen name="CreateTicket" component={CreateTicketScreen} />
-          <Stack.Screen name="Notifications" component={NotificationsScreen} />
-          <Stack.Screen name="Transactions" component={TransactionsScreen} />
-          <Stack.Screen name="Profile" component={ProfileScreen} />
-          <Stack.Screen name="TravellerProfiles" component={TravellerProfilesScreen} />
-          <Stack.Screen name="CurrentTrip" component={CurrentTripScreen} />
-          {/* RFID screens */}
-          <Stack.Screen name="RfidWallet" component={RfidWalletScreen} />
-          <Stack.Screen name="RfidLedger" component={RfidLedgerScreen} />
-          <Stack.Screen name="RfidRecharge" component={RfidRechargeScreen} />
-          <Stack.Screen name="RfidRechargeHistory" component={RfidRechargeHistoryScreen} />
-          <Stack.Screen name="RfidRides" component={RfidRidesScreen} />
-          <Stack.Screen name="RfidRideDetail" component={RfidRideDetailScreen} />
+
+          {/* Every pushed screen automatically gets bottom protection */}
+          <Stack.Group screenLayout={safeScreenLayout}>
+            <Stack.Screen
+              name="SeatSelection"
+              component={SeatSelectionScreen}
+            />
+            <Stack.Screen
+              name="BookingConfirmation"
+              component={BookingConfirmationScreen}
+            />
+            <Stack.Screen
+              name="BookingDetail"
+              component={BookingDetailScreen}
+            />
+            <Stack.Screen
+              name="SupportTickets"
+              component={SupportTicketsScreen}
+            />
+            <Stack.Screen
+              name="TicketDetail"
+              component={TicketDetailScreen}
+            />
+            <Stack.Screen
+              name="CreateTicket"
+              component={CreateTicketScreen}
+            />
+            <Stack.Screen
+              name="Notifications"
+              component={NotificationsScreen}
+            />
+            <Stack.Screen
+              name="Transactions"
+              component={TransactionsScreen}
+            />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen
+              name="TravellerProfiles"
+              component={TravellerProfilesScreen}
+            />
+            <Stack.Screen
+              name="CurrentTrip"
+              component={CurrentTripScreen}
+            />
+
+            <Stack.Screen name="RfidWallet" component={RfidWalletScreen} />
+            <Stack.Screen name="RfidLedger" component={RfidLedgerScreen} />
+            <Stack.Screen
+              name="RfidRecharge"
+              component={RfidRechargeScreen}
+            />
+            <Stack.Screen
+              name="RfidRechargeHistory"
+              component={RfidRechargeHistoryScreen}
+            />
+            <Stack.Screen name="RfidRides" component={RfidRidesScreen} />
+            <Stack.Screen
+              name="RfidRideDetail"
+              component={RfidRideDetailScreen}
+            />
+          </Stack.Group>
         </>
       ) : (
-        <>
+        <Stack.Group screenLayout={safeScreenLayout}>
           <Stack.Screen name="Landing" component={LandingScreen} />
           <Stack.Screen name="EmailEntry" component={EmailEntryScreen} />
-          <Stack.Screen name="OTPVerification" component={OTPVerificationScreen} />
-        </>
+          <Stack.Screen
+            name="OTPVerification"
+            component={OTPVerificationScreen}
+          />
+        </Stack.Group>
       )}
     </Stack.Navigator>
   );

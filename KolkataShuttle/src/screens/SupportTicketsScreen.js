@@ -94,7 +94,7 @@ export default function SupportTicketsScreen({ navigation }) {
           data={tickets}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+          contentContainerStyle={{ paddingBottom: 20 }}
         />
       )}
     </View>

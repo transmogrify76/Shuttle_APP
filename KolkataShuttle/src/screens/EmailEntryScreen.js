@@ -98,7 +98,7 @@ export default function EmailEntryScreen({ route, navigation }) {
           </View>
         </KeyboardAvoidingView>
 
-        <View style={{ paddingBottom: insets.bottom + 10 }} />
+        
       </LinearGradient>
     </View>
   );

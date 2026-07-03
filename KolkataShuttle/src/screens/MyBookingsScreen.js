@@ -693,7 +693,7 @@ export default function MyBookingsScreen({ navigation }) {
             flexGrow: 1,
             alignItems: 'center',
             paddingTop: 40,
-            paddingBottom: insets.bottom + 20,
+            paddingBottom: 20,
           }}
           refreshControl={
             <RefreshControl
@@ -721,7 +721,7 @@ export default function MyBookingsScreen({ navigation }) {
               tintColor={C.gold}
             />
           }
-          contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+          contentContainerStyle={{ paddingBottom: 20 }}
         />
       )}
 

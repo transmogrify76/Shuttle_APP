@@ -110,7 +110,7 @@ export default function NotificationsScreen({ navigation }) {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.gold} />}
-          contentContainerStyle={{ paddingBottom: insets.bottom }}
+         contentContainerStyle={{ paddingBottom: 16 }}
         />
       )}
     </View>
