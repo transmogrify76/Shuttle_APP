@@ -15,7 +15,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import { getTransactions, getInvoice } from '../services/bookingApi';
 import { generateInvoicePDF } from '../utils/invoiceGenerator';
+import { eventEmitter } from '../utils/eventEmitter';
 import { C, T } from '../styles/design';
+
+const RELEVANT_RESOURCES = new Set(['transactions']);
 
 const statusOptions = ['all', 'paid', 'failed', 'refunded', 'refund_pending', 'created'];
 const monthOptions = [
@@ -58,6 +61,15 @@ export default function TransactionsScreen({ navigation }) {
 
   useEffect(() => {
     loadTransactions();
+
+    const handleRefresh = (payload) => {
+      const resources = payload?.resources || payload?.keys || [];
+      if (resources.some((r) => RELEVANT_RESOURCES.has(r))) {
+        loadTransactions(true);
+      }
+    };
+    eventEmitter.on('refreshData', handleRefresh);
+    return () => eventEmitter.off('refreshData', handleRefresh);
   }, []);
 
   const loadTransactions = async (refresh = false) => {

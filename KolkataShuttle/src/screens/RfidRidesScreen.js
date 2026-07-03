@@ -5,7 +5,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import { getRfidRides } from '../services/rfidApi';
+import { eventEmitter } from '../utils/eventEmitter';
 import { C, T } from '../styles/design';
+
+const RELEVANT_RESOURCES = new Set(['rfid_rides']);
 
 export default function RfidRidesScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -35,7 +38,18 @@ export default function RfidRidesScreen({ navigation }) {
   const onRefresh = () => loadRides(true, 1);
   const loadMore = () => { if (hasMore && !loading && !refreshing) loadRides(false, page + 1); };
 
-  useEffect(() => { loadRides(); }, []);
+  useEffect(() => {
+    loadRides();
+
+    const handleRefresh = (payload) => {
+      const resources = payload?.resources || payload?.keys || [];
+      if (resources.some((r) => RELEVANT_RESOURCES.has(r))) {
+        loadRides(true, 1);
+      }
+    };
+    eventEmitter.on('refreshData', handleRefresh);
+    return () => eventEmitter.off('refreshData', handleRefresh);
+  }, []);
 
   const renderItem = ({ item }) => {
     const netFare = item.fare_net_amount !== undefined ? item.fare_net_amount : item.fare_amount;

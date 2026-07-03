@@ -5,7 +5,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import { getRfidLedger } from '../services/rfidApi';
+import { eventEmitter } from '../utils/eventEmitter';
 import { C, T } from '../styles/design';
+
+const RELEVANT_RESOURCES = new Set(['rfid_ledger']);
 
 export default function RfidLedgerScreen() {
   const insets = useSafeAreaInsets();
@@ -35,7 +38,18 @@ export default function RfidLedgerScreen() {
   const onRefresh = () => loadLedger(true, 1);
   const loadMore = () => { if (hasMore && !loading && !refreshing) loadLedger(false, page + 1); };
 
-  useEffect(() => { loadLedger(); }, []);
+  useEffect(() => {
+    loadLedger();
+
+    const handleRefresh = (payload) => {
+      const resources = payload?.resources || payload?.keys || [];
+      if (resources.some((r) => RELEVANT_RESOURCES.has(r))) {
+        loadLedger(true, 1);
+      }
+    };
+    eventEmitter.on('refreshData', handleRefresh);
+    return () => eventEmitter.off('refreshData', handleRefresh);
+  }, []);
 
   const renderItem = ({ item }) => (
     <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: C.border }}>

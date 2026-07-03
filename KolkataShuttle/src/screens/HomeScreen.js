@@ -34,6 +34,14 @@ import {
 } from '../services/bookingApi';
 import { getRouteBetweenStops } from '../services/routingApi';
 import { fetchProfile } from '../services/profileApi';
+import { eventEmitter } from '../utils/eventEmitter';
+
+// Resources whose changes should refresh what's on the home/search screen,
+// per the passenger API refresh WebSocket contract: new/updated routes and
+// stops, newly created or catalog-relevant trips, and seat availability.
+const HOME_ROUTE_RESOURCES = new Set(['routes', 'stops']);
+const HOME_TRIP_RESOURCES = new Set(['route_trip_options', 'scheduled_trips']);
+const HOME_SEAT_RESOURCES = new Set(['seat_availability']);
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 const BOTTOM_SHEET_MAX_HEIGHT = screenHeight * 0.72;
@@ -500,6 +508,64 @@ export default function HomeScreen({ navigation }) {
 
   const translateY = useRef(new Animated.Value(0)).current;
 
+  // ── Shared loaders (used by initial mount effects AND by the
+  // passenger API refresh WebSocket listener below). They preserve the
+  // user's current route/pickup/dropoff selection instead of resetting it,
+  // per the "do not clear filters on invalidation" contract.
+  const loadRoutesList = async ({ alertOnError = false } = {}) => {
+    try {
+      const { items } = await listRoutes(true);
+      setRoutesData(items || []);
+      setSelectedRoute((prev) => {
+        if (prev) {
+          const stillExists = items?.find((r) => r.id === prev.id);
+          if (stillExists) return stillExists;
+        }
+        return items?.length ? items[0] : null;
+      });
+    } catch (err) {
+      console.warn('[HomeScreen] failed to refresh routes', err);
+      if (alertOnError) Alert.alert('Error', 'Unable to load routes');
+    }
+  };
+
+  const loadTripsForRoute = async (routeId, { alertOnError = false } = {}) => {
+    if (!routeId) return;
+    try {
+      const routeDetail = await getRouteDetails(routeId);
+      setStops(routeDetail.stops?.sort((a, b) => a.sequence_no - b.sequence_no) || []);
+      const { items } = await listScheduledTrips(routeId, true);
+      setTrips(items || []);
+      setSelectedTrip((prev) => {
+        if (prev) {
+          const stillExists = items?.find((t) => t.id === prev.id);
+          if (stillExists) return stillExists;
+        }
+        return items?.length ? items[0] : null;
+      });
+    } catch (err) {
+      console.warn('[HomeScreen] failed to refresh trips', err);
+      if (alertOnError) Alert.alert('Error', err.message);
+    }
+  };
+
+  const refreshLegAvailability = async (tripList, routeId, pickup, dropoff) => {
+    if (!pickup || !dropoff || !tripList?.length || !routeId) {
+      setLegAvailability({});
+      return;
+    }
+    setLoadingSeats(true);
+    const results = {};
+    for (const trip of tripList) {
+      try {
+        const s = await getLegAvailableSeats(trip.id, routeId, pickup, dropoff);
+        results[trip.id] = { available: s.available_seats, total: s.seat_capacity };
+      } catch { results[trip.id] = null; }
+    }
+    setLegAvailability(results);
+    setLoadingSeats(false);
+  };
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -531,34 +597,14 @@ export default function HomeScreen({ navigation }) {
   }, [sheetVisible]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const { items } = await listRoutes(true);
-        setRoutesData(items || []);
-        if (items?.length) setSelectedRoute(items[0]);
-      } catch {
-        Alert.alert('Error', 'Unable to load routes');
-      }
-    })();
+    loadRoutesList({ alertOnError: true });
   }, []);
 
   useEffect(() => {
     if (!selectedRoute) return;
-    (async () => {
-      try {
-        setLoading(true);
-        const routeDetail = await getRouteDetails(selectedRoute.id);
-        setStops(routeDetail.stops?.sort((a, b) => a.sequence_no - b.sequence_no) || []);
-        const { items } = await listScheduledTrips(selectedRoute.id, true);
-        setTrips(items || []);
-        if (items?.length) setSelectedTrip(items[0]);
-      } catch (err) {
-        Alert.alert('Error', err.message);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [selectedRoute]);
+    setLoading(true);
+    loadTripsForRoute(selectedRoute.id, { alertOnError: true }).finally(() => setLoading(false));
+  }, [selectedRoute?.id]);
 
   useEffect(() => {
     if (pickupStopId && dropoffStopId && stops.length) {
@@ -579,23 +625,32 @@ export default function HomeScreen({ navigation }) {
   }, [pickupStopId, dropoffStopId, stops]);
 
   useEffect(() => {
-    if (!pickupStopId || !dropoffStopId || trips.length === 0 || !selectedRoute) {
-      setLegAvailability({});
-      return;
-    }
-    (async () => {
-      setLoadingSeats(true);
-      const results = {};
-      for (const trip of trips) {
-        try {
-          const s = await getLegAvailableSeats(trip.id, selectedRoute.id, pickupStopId, dropoffStopId);
-          results[trip.id] = { available: s.available_seats, total: s.seat_capacity };
-        } catch { results[trip.id] = null; }
-      }
-      setLegAvailability(results);
-      setLoadingSeats(false);
-    })();
+    refreshLegAvailability(trips, selectedRoute?.id, pickupStopId, dropoffStopId);
   }, [pickupStopId, dropoffStopId, trips, selectedRoute]);
+
+  // Passenger API refresh WebSocket: a driver creating a trip (trip.created),
+  // a trip entering/leaving discovery (trip.catalog_changed), or a route/stop
+  // change (route.created/route.updated) means the home search results may
+  // be stale. Refetch in place — keep the selected route and pickup/dropoff
+  // filters exactly as the user left them; only the underlying data updates.
+  useEffect(() => {
+    const handleRefresh = (payload) => {
+      const resources = payload?.resources || payload?.keys || [];
+      if (resources.length === 0) return;
+
+      if (resources.some((r) => HOME_ROUTE_RESOURCES.has(r))) {
+        loadRoutesList();
+      }
+      if (selectedRoute && resources.some((r) => HOME_TRIP_RESOURCES.has(r))) {
+        loadTripsForRoute(selectedRoute.id);
+      }
+      if (resources.some((r) => HOME_SEAT_RESOURCES.has(r))) {
+        refreshLegAvailability(trips, selectedRoute?.id, pickupStopId, dropoffStopId);
+      }
+    };
+    eventEmitter.on('refreshData', handleRefresh);
+    return () => eventEmitter.off('refreshData', handleRefresh);
+  }, [selectedRoute, trips, pickupStopId, dropoffStopId]);
 
   useEffect(() => {
     if (selectedTrip && pickupStopId && dropoffStopId && selectedRoute) {

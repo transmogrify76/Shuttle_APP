@@ -5,7 +5,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import { getRfidSummary } from '../services/rfidApi';
+import { eventEmitter } from '../utils/eventEmitter';
 import { C, T } from '../styles/design';
+
+// Resources that should trigger a refetch here per the passenger API refresh
+// WebSocket contract: rfid_summary changes (accepted RFID board/drop scans,
+// recharge-driven balance updates once emitted) and rfid_ledger (balance may
+// have changed alongside the ledger).
+const RELEVANT_RESOURCES = new Set(['rfid_summary', 'rfid_ledger']);
 
 export default function RfidWalletScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -14,6 +21,15 @@ export default function RfidWalletScreen({ navigation }) {
 
   useEffect(() => {
     loadSummary();
+
+    const handleRefresh = (payload) => {
+      const resources = payload?.resources || payload?.keys || [];
+      if (resources.some((r) => RELEVANT_RESOURCES.has(r))) {
+        loadSummary();
+      }
+    };
+    eventEmitter.on('refreshData', handleRefresh);
+    return () => eventEmitter.off('refreshData', handleRefresh);
   }, []);
 
   const loadSummary = async () => {

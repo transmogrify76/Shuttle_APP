@@ -19,7 +19,13 @@ import {
   createRating,
   getBookingRating,
 } from '../services/bookingApi';
+import { eventEmitter } from '../utils/eventEmitter';
 import { C, T } from '../styles/design';
+
+// booking.changed carries the booking/session ids and covers this screen's
+// detail view; trip_status covers scan-driven boarded/dropped transitions
+// that this screen also reflects (e.g. via rating eligibility).
+const RELEVANT_RESOURCES = new Set(['bookings', 'booking_sessions', 'current_bookings', 'trip_status']);
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -58,7 +64,23 @@ export default function BookingDetailScreen({ route, navigation }) {
   const [reviewText, setReviewText] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+
+    const handleRefresh = (payload) => {
+      const resources = payload?.resources || payload?.keys || [];
+      const data = payload?.events?.[payload.events.length - 1]?.data || {};
+      // If the event carries a booking_session_id, only reload when it
+      // matches this screen's session (or when the id was omitted, which
+      // per the contract means "refresh the session and its children").
+      if (data.booking_session_id && data.booking_session_id !== sessionId) return;
+      if (resources.some((r) => RELEVANT_RESOURCES.has(r))) {
+        loadData();
+      }
+    };
+    eventEmitter.on('refreshData', handleRefresh);
+    return () => eventEmitter.off('refreshData', handleRefresh);
+  }, [sessionId]);
 
   const loadData = async () => {
     try {
@@ -239,10 +261,10 @@ export default function BookingDetailScreen({ route, navigation }) {
               <Text style={T.bodyMd}>Driver: {driverVehicleInfo.driver_name || 'N/A'}</Text>
             </View>
             <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:10 }}>
-              {renderStars(driverVehicleInfo.driver_average_rating, 14)}
+              {renderStars(parseFloat(driverVehicleInfo.driver_average_rating), 14)}
               <Text style={T.bodySm}>
-                {driverVehicleInfo.driver_average_rating
-                  ? `${driverVehicleInfo.driver_average_rating.toFixed(1)} (${driverVehicleInfo.driver_rating_count} ratings)`
+                {driverVehicleInfo.driver_average_rating != null && !isNaN(parseFloat(driverVehicleInfo.driver_average_rating))
+                  ? `${parseFloat(driverVehicleInfo.driver_average_rating).toFixed(1)} (${driverVehicleInfo.driver_rating_count} ratings)`
                   : 'New driver'}
               </Text>
             </View>

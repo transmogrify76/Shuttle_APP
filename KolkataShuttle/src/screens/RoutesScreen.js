@@ -14,7 +14,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import { listRoutes, getRouteDetails } from '../services/routeApi';
+import { eventEmitter } from '../utils/eventEmitter';
 import { C, T } from '../styles/design';
+
+const RELEVANT_RESOURCES = new Set(['routes', 'stops']);
 
 export default function RoutesScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -27,7 +30,20 @@ export default function RoutesScreen({ navigation }) {
 
   useEffect(() => {
     fetchRoutes();
-  }, []);
+
+    const handleRefresh = (payload) => {
+      const resources = payload?.resources || payload?.keys || [];
+      if (!resources.some((r) => RELEVANT_RESOURCES.has(r))) return;
+      fetchRoutes();
+      // Keep an open route-detail modal in sync too (e.g. stops_bulk_uploaded,
+      // route_fares_changed while the user is looking at that route).
+      if (modalVisible && selectedRoute) {
+        getRouteDetails(selectedRoute.id).then(setRouteDetail).catch(() => {});
+      }
+    };
+    eventEmitter.on('refreshData', handleRefresh);
+    return () => eventEmitter.off('refreshData', handleRefresh);
+  }, [modalVisible, selectedRoute]);
 
   const fetchRoutes = async () => {
     try {

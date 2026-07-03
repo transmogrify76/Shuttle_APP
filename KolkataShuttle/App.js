@@ -11,6 +11,7 @@ import { Provider as PaperProvider } from 'react-native-paper';
 import { AuthProvider } from './src/context/AuthContext';
 import { NotificationProvider } from './src/context/NotificationContext';
 import { SeatmapProvider } from './src/context/SeatmapContext';
+import { ApiRefreshProvider } from './src/context/ApiRefreshContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { darkTheme } from './src/styles/theme';
 
@@ -31,9 +32,11 @@ export default function App() {
         <AuthProvider>
           <SeatmapProvider>
             <NotificationProvider>
-              <NavigationContainer>
-                <AppNavigator />
-              </NavigationContainer>
+              <ApiRefreshProvider>
+                <NavigationContainer>
+                  <AppNavigator />
+                </NavigationContainer>
+              </ApiRefreshProvider>
             </NotificationProvider>
           </SeatmapProvider>
         </AuthProvider>

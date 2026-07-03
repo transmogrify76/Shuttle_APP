@@ -5,7 +5,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
 import { getRfidRideDetail } from '../services/rfidApi';
+import { eventEmitter } from '../utils/eventEmitter';
 import { C, T } from '../styles/design';
+
+const RELEVANT_RESOURCES = new Set(['rfid_rides']);
 
 export default function RfidRideDetailScreen({ route }) {
   const { rideId } = route.params;
@@ -15,6 +18,17 @@ export default function RfidRideDetailScreen({ route }) {
 
   useEffect(() => {
     loadDetail();
+
+    // rfid.scan_completed refreshes rides + "ride detail if open" per the
+    // passenger refresh contract — this screen being mounted means it's open.
+    const handleRefresh = (payload) => {
+      const resources = payload?.resources || payload?.keys || [];
+      if (resources.some((r) => RELEVANT_RESOURCES.has(r))) {
+        loadDetail();
+      }
+    };
+    eventEmitter.on('refreshData', handleRefresh);
+    return () => eventEmitter.off('refreshData', handleRefresh);
   }, []);
 
   const loadDetail = async () => {

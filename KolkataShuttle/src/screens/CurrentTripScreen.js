@@ -6,7 +6,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import MapView, { Marker } from 'react-native-maps';
 import Header from '../components/Header';
 import { getBookingSessionCurrentStatus, getBookingSessionLiveLocation } from '../services/bookingApi';
+import { eventEmitter } from '../utils/eventEmitter';
 import { C, T } from '../styles/design';
+
+const RELEVANT_RESOURCES = new Set([
+  'trip_status',
+  'trip_location',
+  'current_bookings',
+  'bookings',
+  'booking_sessions',
+]);
 
 export default function CurrentTripScreen({ route, navigation }) {
   const { sessionId } = route.params;
@@ -31,8 +40,23 @@ export default function CurrentTripScreen({ route, navigation }) {
 
   useEffect(() => {
     fetchData();
+    // Polling stays as a best-effort fallback; the refresh socket triggers
+    // an immediate fetch on trip lifecycle/scan/location events so the UI
+    // doesn't wait for the next tick.
     intervalRef.current = setInterval(fetchData, 10000);
-    return () => clearInterval(intervalRef.current);
+
+    const handleRefresh = (payload) => {
+      const resources = payload?.resources || payload?.keys || [];
+      if (resources.some((r) => RELEVANT_RESOURCES.has(r))) {
+        fetchData();
+      }
+    };
+    eventEmitter.on('refreshData', handleRefresh);
+
+    return () => {
+      clearInterval(intervalRef.current);
+      eventEmitter.off('refreshData', handleRefresh);
+    };
   }, [sessionId]);
 
   if (loading) return <ActivityIndicator size="large" color={C.gold} style={{ flex:1, backgroundColor:C.bg }} />;
