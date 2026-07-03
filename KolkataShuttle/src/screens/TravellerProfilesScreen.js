@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
-import CustomButton from '../components/CustomButton';
+// CustomButton removed – we'll use TouchableOpacity + LinearGradient directly
 import {
   getTravellerProfiles,
   createTravellerProfile,
@@ -162,11 +162,38 @@ export default function TravellerProfilesScreen({ navigation }) {
                 <Ionicons name={form.is_self ? 'checkbox' : 'square-outline'} size={20} color={C.gold} />
                 <Text style={[T.bodySm, { marginLeft:8 }]}>This is me (self)</Text>
               </TouchableOpacity>
-              <View style={{ flexDirection:'row', gap:12, marginTop:16 }}>
-                <TouchableOpacity onPress={() => setModalVisible(false)} style={{ flex:1, backgroundColor:C.surfaceHigh, borderRadius:16, paddingVertical:12, alignItems:'center' }}>
-                  <Text style={T.bodyMd}>Cancel</Text>
+              
+              {/* ✅ FIXED BUTTON ROW */}
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+                <TouchableOpacity
+                  onPress={() => setModalVisible(false)}
+                  style={{
+                    flex: 1,
+                    backgroundColor: C.surfaceHigh,
+                    borderRadius: 16,
+                    paddingVertical: 14,
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: C.border,
+                  }}
+                >
+                  <Text style={[T.bodyMd, { color: C.textSecondary }]}>Cancel</Text>
                 </TouchableOpacity>
-                <CustomButton title={submitting ? 'Saving...' : 'Save'} onPress={handleSave} disabled={submitting} style={{ flex:1 }} />
+                
+                <TouchableOpacity
+                  onPress={handleSave}
+                  disabled={submitting}
+                  style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}
+                >
+                  <LinearGradient
+                    colors={[C.gold, C.goldDim]}
+                    style={{ paddingVertical: 14, alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Text style={[T.bodyMd, { color: '#fff', fontWeight: '600' }]}>
+                      {submitting ? 'Saving...' : 'Save'}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
               </View>
             </LinearGradient>
           </View>
