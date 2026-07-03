@@ -14,6 +14,9 @@ import { SeatmapProvider } from './src/context/SeatmapContext';
 import { ApiRefreshProvider } from './src/context/ApiRefreshContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { darkTheme } from './src/styles/theme';
+import { YellowBox, LogBox } from 'react-native';
+LogBox.ignoreAllLogs();
+
 
 if (typeof ErrorUtils !== 'undefined') {
   ErrorUtils.setGlobalHandler((error, isFatal) => {
