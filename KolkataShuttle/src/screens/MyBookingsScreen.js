@@ -27,6 +27,13 @@ const QR_ELIGIBLE_SEAT_STATUSES = new Set(['booked', 'boarded']);
 const HISTORY_SEAT_STATUSES = new Set(['completed', 'cancelled', 'missed']);
 const CLOSED_SESSION_STATUSES = new Set(['cancelled', 'expired']);
 
+const TERMINAL_TRIP_STATUSES = new Set([
+  'completed',
+  'cancelled',
+  'premature_end',
+  'prematured_end_request',
+]);
+
 const getStatusColor = (status) => {
   switch (status) {
     case 'confirmed':
@@ -105,6 +112,12 @@ const hasBookedOrBoardedSeat = (session) => (
   )
 );
 
+const hasBoardedSeat = (session) => (
+  getSessionBookings(session).some((booking) =>
+    booking.booking_status === 'boarded'
+  )
+);
+
 const allSeatsHistorical = (session) => {
   const bookings = getSessionBookings(session);
 
@@ -113,13 +126,16 @@ const allSeatsHistorical = (session) => {
   );
 };
 
-const isSessionHistory = (session, trip, now) => {
-  const end = parseApiDate(trip?.planned_end_at);
+const isTripTerminal = (trip) => (
+  TERMINAL_TRIP_STATUSES.has(trip?.status) ||
+  Boolean(trip?.actual_end_at)
+);
 
+const isSessionHistory = (session, trip, now) => {
   return (
     CLOSED_SESSION_STATUSES.has(session?.status) ||
     allSeatsHistorical(session) ||
-    (end && end < now)
+    isTripTerminal(trip)
   );
 };
 
@@ -129,14 +145,14 @@ const isSessionOngoing = (session, trip, now) => {
   }
 
   const start = parseApiDate(trip?.planned_start_at);
-  const end = parseApiDate(trip?.planned_end_at);
 
   return (
     session?.status === 'confirmed' &&
     hasBookedOrBoardedSeat(session) &&
-    start &&
-    start <= now &&
-    (!end || end >= now)
+    (
+      hasBoardedSeat(session) ||
+      (start && start <= now)
+    )
   );
 };
 
