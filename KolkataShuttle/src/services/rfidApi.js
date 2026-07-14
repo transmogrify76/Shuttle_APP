@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
+import { handleApiResponse } from '../utils/apiError';
 
 const getAuthHeaders = async (contentType = 'application/json') => {
   const token = await AsyncStorage.getItem('access_token');
@@ -8,21 +9,7 @@ const getAuthHeaders = async (contentType = 'application/json') => {
   return headers;
 };
 
-const handleResponse = async (response, url) => {
-  const text = await response.text();
-  console.log(`[RFID API] ${url} - Status: ${response.status}`);
-  if (!response.ok) {
-    let errorMsg;
-    try {
-      const data = JSON.parse(text);
-      errorMsg = data.detail?.message || 'Request failed';
-    } catch {
-      errorMsg = `Server error (${response.status})`;
-    }
-    throw new Error(errorMsg);
-  }
-  return JSON.parse(text);
-};
+const handleResponse = handleApiResponse;
 
 // GET /passenger/rfid/me – card & account status
 export const getRfidMe = async () => {

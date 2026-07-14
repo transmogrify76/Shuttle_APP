@@ -7,13 +7,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Header from '../components/Header';
-// CustomButton removed – we'll use TouchableOpacity + LinearGradient directly
+import CustomButton from '../components/CustomButton';
 import {
   getTravellerProfiles,
   createTravellerProfile,
   updateTravellerProfile,
   deleteTravellerProfile,
 } from '../services/bookingApi';
+import { validateTravellerForm } from '../utils/travellerValidation';
 import { C, T } from '../styles/design';
 
 const getInitials = (name) => {
@@ -66,6 +67,7 @@ export default function TravellerProfilesScreen({ navigation }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProfile, setEditingProfile] = useState(null);
   const [form, setForm] = useState({ full_name: '', phone: '', email: '', relationship_label: '', is_self: false });
+  const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => { loadProfiles(); }, []);
@@ -81,6 +83,7 @@ export default function TravellerProfilesScreen({ navigation }) {
   const openCreateModal = () => {
     setEditingProfile(null);
     setForm({ full_name: '', phone: '', email: '', relationship_label: '', is_self: false });
+    setFormErrors({});
     setModalVisible(true);
   };
 
@@ -93,14 +96,14 @@ export default function TravellerProfilesScreen({ navigation }) {
       relationship_label: profile.relationship_label || '',
       is_self: profile.is_self,
     });
+    setFormErrors({});
     setModalVisible(true);
   };
 
   const handleSave = async () => {
-    if (!form.full_name.trim() || !form.phone.trim()) {
-      Alert.alert('Missing info', 'Name and phone are required');
-      return;
-    }
+    const { valid, errors } = validateTravellerForm(form);
+    setFormErrors(errors);
+    if (!valid) return;
     setSubmitting(true);
     try {
       if (editingProfile) {
@@ -112,7 +115,21 @@ export default function TravellerProfilesScreen({ navigation }) {
       }
       setModalVisible(false);
       loadProfiles();
-    } catch (err) { Alert.alert('Error', err.message); }
+    } catch (err) {
+      if (err.code === 'validation_error' && err.fields?.length) {
+        // Map 422 field errors back onto the form inline (doc §9 checklist).
+        const mapped = {};
+        err.fields.forEach((f) => {
+          if (f.path.endsWith('phone')) mapped.phone = f.message;
+          else if (f.path.endsWith('email')) mapped.email = f.message;
+          else if (f.path.endsWith('full_name')) mapped.full_name = f.message;
+        });
+        setFormErrors(mapped);
+        Alert.alert('Check traveller details', err.message);
+      } else {
+        Alert.alert('Error', err.message);
+      }
+    }
     finally { setSubmitting(false); }
   };
 
@@ -154,46 +171,22 @@ export default function TravellerProfilesScreen({ navigation }) {
           <View style={{ flex:1, backgroundColor:'rgba(0,0,0,0.85)', justifyContent:'center', alignItems:'center', padding:24 }}>
             <LinearGradient colors={[C.surface, C.surfaceUp]} style={{ borderRadius:28, padding:24, width:'100%', borderWidth:1, borderColor:C.border }}>
               <Text style={T.displayMd}>{editingProfile ? 'Edit' : 'Add'} traveller</Text>
-              <TextInput style={styles.input} placeholder="Full name" placeholderTextColor={C.textMuted} value={form.full_name} onChangeText={t => setForm({...form, full_name:t})} />
-              <TextInput style={styles.input} placeholder="Phone" placeholderTextColor={C.textMuted} value={form.phone} onChangeText={t => setForm({...form, phone:t})} keyboardType="phone-pad" />
-              <TextInput style={styles.input} placeholder="Email (optional)" placeholderTextColor={C.textMuted} value={form.email} onChangeText={t => setForm({...form, email:t})} autoCapitalize="none" />
-              <TextInput style={styles.input} placeholder="Relationship (e.g., Brother, Mother)" placeholderTextColor={C.textMuted} value={form.relationship_label} onChangeText={t => setForm({...form, relationship_label:t})} />
+              <TextInput style={styles.input} placeholder="Full name" placeholderTextColor={C.textMuted} value={form.full_name} onChangeText={t => setForm({...form, full_name:t})} maxLength={120} />
+              {formErrors.full_name && <Text style={styles.errorText}>{formErrors.full_name}</Text>}
+              <TextInput style={styles.input} placeholder="Phone" placeholderTextColor={C.textMuted} value={form.phone} onChangeText={t => setForm({...form, phone:t})} keyboardType="phone-pad" maxLength={20} />
+              {formErrors.phone && <Text style={styles.errorText}>{formErrors.phone}</Text>}
+              <TextInput style={styles.input} placeholder="Email (optional)" placeholderTextColor={C.textMuted} value={form.email} onChangeText={t => setForm({...form, email:t})} autoCapitalize="none" maxLength={255} />
+              {formErrors.email && <Text style={styles.errorText}>{formErrors.email}</Text>}
+              <TextInput style={styles.input} placeholder="Relationship (e.g., Brother, Mother)" placeholderTextColor={C.textMuted} value={form.relationship_label} onChangeText={t => setForm({...form, relationship_label:t})} maxLength={80} />
               <TouchableOpacity onPress={() => setForm({...form, is_self: !form.is_self})} style={{ flexDirection:'row', alignItems:'center', marginVertical:12 }}>
                 <Ionicons name={form.is_self ? 'checkbox' : 'square-outline'} size={20} color={C.gold} />
                 <Text style={[T.bodySm, { marginLeft:8 }]}>This is me (self)</Text>
               </TouchableOpacity>
-              
-              {/* ✅ FIXED BUTTON ROW */}
-              <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-                <TouchableOpacity
-                  onPress={() => setModalVisible(false)}
-                  style={{
-                    flex: 1,
-                    backgroundColor: C.surfaceHigh,
-                    borderRadius: 16,
-                    paddingVertical: 14,
-                    alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: C.border,
-                  }}
-                >
-                  <Text style={[T.bodyMd, { color: C.textSecondary }]}>Cancel</Text>
+              <View style={{ flexDirection:'row', gap:12, marginTop:16 }}>
+                <TouchableOpacity onPress={() => setModalVisible(false)} style={{ flex:1, backgroundColor:C.surfaceHigh, borderRadius:16, paddingVertical:12, alignItems:'center' }}>
+                  <Text style={T.bodyMd}>Cancel</Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity
-                  onPress={handleSave}
-                  disabled={submitting}
-                  style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}
-                >
-                  <LinearGradient
-                    colors={[C.gold, C.goldDim]}
-                    style={{ paddingVertical: 14, alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <Text style={[T.bodyMd, { color: '#fff', fontWeight: '600' }]}>
-                      {submitting ? 'Saving...' : 'Save'}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                <CustomButton title={submitting ? 'Saving...' : 'Save'} onPress={handleSave} disabled={submitting} style={{ flex:1 }} />
               </View>
             </LinearGradient>
           </View>
@@ -204,5 +197,6 @@ export default function TravellerProfilesScreen({ navigation }) {
 }
 
 const styles = {
-  input: { backgroundColor: C.surfaceUp, borderWidth:1, borderColor:C.border, borderRadius:14, padding:12, color:C.textPrimary, marginBottom:12 }
+  input: { backgroundColor: C.surfaceUp, borderWidth:1, borderColor:C.border, borderRadius:14, padding:12, color:C.textPrimary, marginBottom:12 },
+  errorText: { color: C.red, fontSize: 12, marginTop: -8, marginBottom: 10 },
 };

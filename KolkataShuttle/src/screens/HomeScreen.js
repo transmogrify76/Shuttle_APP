@@ -715,6 +715,7 @@ export default function HomeScreen({ navigation }) {
       pickupStopId,
       dropoffStopId,
       fareAmount: fare.amount,
+      farePreview: fare,
       routeName: selectedRoute?.name,
     });
   };
@@ -842,6 +843,11 @@ export default function HomeScreen({ navigation }) {
                 <Text style={{ fontSize: 30, fontWeight: '800', color: C.gold, letterSpacing: -1 }}>
                   ₹{fare.amount}
                 </Text>
+                {fare.gst_applicable && (
+                  <Text style={[T.bodySm, { color: C.textMuted, marginTop: 2 }]}>
+                    {fare.gst_inclusive ? 'GST included' : 'plus GST'} · ₹{fare.total_tax_amount} tax
+                  </Text>
+                )}
               </View>
               <View style={{ alignItems: 'flex-end', gap: 6 }}>
                 {fare.has_ac && <GoldTag label="AC" />}

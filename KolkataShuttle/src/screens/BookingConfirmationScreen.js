@@ -11,7 +11,7 @@ import { C, T } from '../styles/design';
 export default function BookingConfirmationScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const { sessionId, seats, fare, routeName, scheduledTrip } = route.params;
-  const total = fare;
+  const total = parseFloat(fare);
 
   const handleViewBookings = () => {
     // Emit refresh event to update booking list

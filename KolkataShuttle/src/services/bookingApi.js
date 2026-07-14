@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config/api';
+import { handleApiResponse } from '../utils/apiError';
 
 const getAuthHeaders = async (contentType = 'application/json') => {
   const token = await AsyncStorage.getItem('access_token');
@@ -8,20 +9,7 @@ const getAuthHeaders = async (contentType = 'application/json') => {
   return headers;
 };
 
-const handleResponse = async (response, url) => {
-  const text = await response.text();
-  console.log(`[API] ${url} - Status: ${response.status}`);
-  try {
-    const data = JSON.parse(text);
-    if (!response.ok) {
-      throw new Error(data.detail?.message || `Request failed with status ${response.status}`);
-    }
-    return data;
-  } catch (e) {
-    console.error(`[API] JSON parse error for ${url}. Response:`, text);
-    throw new Error(`Server returned invalid JSON (status ${response.status})`);
-  }
-};
+const handleResponse = handleApiResponse;
 
 // ========== PASSENGER PROFILE (Self) ==========
 export const getPassengerProfile = async () => {
@@ -113,6 +101,16 @@ export const verifyBookingSessionPayment = async (sessionId, { razorpay_order_id
   return handleResponse(response, url);
 };
 
+// Safe resume/retry for a dismissed, timed-out, or failed checkout. Reconciles
+// with Razorpay server-side first; never creates a second order and never
+// extends the hold. See PASSENGER_FE_LATER_COMMITS_INTEGRATION.md §6.3.
+export const retryBookingSessionPayment = async (sessionId) => {
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE_URL}/passenger/booking-sessions/${sessionId}/retry-payment`;
+  const response = await fetch(url, { method: 'POST', headers });
+  return handleResponse(response, url);
+};
+
 export const getBookingSessions = async (status) => {
   const headers = await getAuthHeaders();
   let url = `${API_BASE_URL}/passenger/booking-sessions`;
@@ -194,6 +192,27 @@ export const getBookingRating = async (bookingId) => {
 export const getInvoice = async (bookingId) => {
   const headers = await getAuthHeaders();
   const url = `${API_BASE_URL}/passenger/bookings/${bookingId}/invoice`;
+  const response = await fetch(url, { headers });
+  return handleResponse(response, url);
+};
+
+// GET /passenger/transactions?status=&month=&year=&limit=&offset=
+// month requires year (backend returns 400 year_required_for_month_filter
+// otherwise) — enforced client-side too so we never send an invalid combo.
+export const getTransactions = async ({ status, month, year, limit, offset } = {}) => {
+  const headers = await getAuthHeaders();
+  const params = new URLSearchParams();
+  if (status && status !== 'all') params.set('status', status);
+  if (month && year) {
+    params.set('month', month);
+    params.set('year', year);
+  } else if (year) {
+    params.set('year', year);
+  }
+  if (limit != null) params.set('limit', limit);
+  if (offset != null) params.set('offset', offset);
+  const qs = params.toString();
+  const url = `${API_BASE_URL}/passenger/transactions${qs ? `?${qs}` : ''}`;
   const response = await fetch(url, { headers });
   return handleResponse(response, url);
 };
@@ -306,5 +325,3 @@ export const getBookingCurrentStatus = async (bookingId) => {
   const response = await fetch(url, { headers });
   return handleResponse(response, url);
 };
-
- 

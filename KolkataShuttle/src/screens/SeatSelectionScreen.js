@@ -18,7 +18,9 @@ import {
   getTravellerProfiles,
   createBookingSession,
   verifyBookingSessionPayment,
+  retryBookingSessionPayment,
 } from '../services/bookingApi';
+import { validateTravellerForm } from '../utils/travellerValidation';
 import { C, T } from '../styles/design';
 
 const getInitials = (name) => {
@@ -48,7 +50,7 @@ const ProfileAvatar = ({ profile, onSelect, selected }) => (
 export default function SeatSelectionScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { scheduledTrip, pickupStopId, dropoffStopId, fareAmount, routeName } = route.params;
+  const { scheduledTrip, pickupStopId, dropoffStopId, fareAmount, farePreview, routeName } = route.params;
 
   // Seats and assignments
   const [selectedSeats, setSelectedSeats] = useState([]);
@@ -58,6 +60,7 @@ export default function SeatSelectionScreen({ route, navigation }) {
   const [assignType, setAssignType] = useState(null); // 'self', 'profile', 'guest'
   const [profiles, setProfiles] = useState([]);
   const [guestForm, setGuestForm] = useState({ full_name: '', phone: '', email: '', relationship_label: '' });
+  const [guestErrors, setGuestErrors] = useState({});
   const [guestModalVisible, setGuestModalVisible] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -70,6 +73,9 @@ export default function SeatSelectionScreen({ route, navigation }) {
   const [seatCapacity, setSeatCapacity] = useState(0);
   const [occupiedSeatsList, setOccupiedSeatsList] = useState([]);
   const [tripBookable, setTripBookable] = useState(false);
+  // 'idle' | 'checking' | 'checkout_open' | 'retry_available' | 'confirmed' | 'closed'
+  const [paymentUiState, setPaymentUiState] = useState('idle');
+  const [inFlight, setInFlight] = useState(false); // mutex: never run create/verify/retry in parallel
 
   const { seatmapData, subscribe, refresh, unsubscribe } = useSeatmap();
 
@@ -157,33 +163,34 @@ export default function SeatSelectionScreen({ route, navigation }) {
   const openGuestModal = () => {
     setAssignModalVisible(false);
     setGuestForm({ full_name: '', phone: '', email: '', relationship_label: '' });
+    setGuestErrors({});
     setGuestModalVisible(true);
   };
 
   const assignGuest = () => {
-    if (!guestForm.full_name.trim() || !guestForm.phone.trim()) {
-      Alert.alert('Missing info', 'Name and phone are required');
-      return;
-    }
+    const { valid, errors } = validateTravellerForm(guestForm);
     // Prevent guest email equal to account email
     if (guestForm.email && guestForm.email.trim().toLowerCase() === user?.email?.trim().toLowerCase()) {
-      Alert.alert('Invalid', 'For yourself, choose Self instead of entering your account email.');
-      return;
+      errors.email = 'For yourself, choose Self instead of entering your account email.';
     }
+    setGuestErrors(errors);
+    if (!valid || errors.email) return;
+
     setSeatAssignments(prev => ({
       ...prev,
       [tempSeat]: {
         type: 'guest',
         traveller: {
-          full_name: guestForm.full_name,
-          phone: guestForm.phone,
-          email: guestForm.email || null,
+          full_name: guestForm.full_name.trim(),
+          phone: guestForm.phone.trim(),
+          email: guestForm.email?.trim() || null,
           relationship_label: guestForm.relationship_label || null,
         }
       }
     }));
     if (!selectedSeats.includes(tempSeat)) setSelectedSeats(prev => [...prev, tempSeat]);
     setGuestModalVisible(false);
+    setGuestErrors({});
     setTempSeat(null);
   };
 
@@ -201,6 +208,13 @@ export default function SeatSelectionScreen({ route, navigation }) {
     }).filter(p => p !== null);
   };
 
+  // Doc §6.3: session.status === 'pending_payment' and the hold hasn't expired.
+  const canRetryPayment = (session) => {
+    if (!session || session.status !== 'pending_payment') return false;
+    if (!session.payment_hold_expires_at) return false;
+    return Date.parse(session.payment_hold_expires_at) > Date.now();
+  };
+
   const handleConfirm = async () => {
     if (selectedSeats.length === 0) {
       Alert.alert('No seats', 'Please select at least one seat');
@@ -215,8 +229,10 @@ export default function SeatSelectionScreen({ route, navigation }) {
       Alert.alert('Trip not bookable', 'This trip is not available for booking');
       return;
     }
+    if (inFlight) return; // mutex: never create + retry/verify in parallel
     const seatsPayload = buildSeatsPayload();
     setLoading(true);
+    setInFlight(true);
     try {
       const res = await createBookingSession({
         scheduled_trip_id: scheduledTrip.id,
@@ -226,46 +242,133 @@ export default function SeatSelectionScreen({ route, navigation }) {
       });
       setCurrentSession(res.booking_session);
       setCurrentPaymentOrder(res.payment_order);
+      setPaymentUiState('checkout_open');
       setPaymentModalVisible(true);
     } catch (err) {
-      if (err.message.includes('seat_unavailable')) {
+      // Structured domain errors from GST/traveller-validation commits
+      // (PASSENGER_FE_LATER_COMMITS_INTEGRATION.md §5.5, §9).
+      if (err.code === 'seat_unavailable') {
         Alert.alert('Seat taken', 'Some seats are no longer available. Refreshing...');
         refresh();
         setSelectedSeats([]);
         setSeatAssignments({});
+      } else if (err.code === 'duplicate_traveller_in_booking_session') {
+        const groups = err.detail?.seat_number_groups;
+        const seatsText = Array.isArray(groups) ? groups.flat().join(', ') : '';
+        Alert.alert('Duplicate traveller', `The same traveller is assigned to more than one seat${seatsText ? ` (seats ${seatsText})` : ''}. Please use a different traveller for each seat.`);
+      } else if (err.code === 'traveller_booking_conflict') {
+        Alert.alert('Journey conflict', `${err.message}${err.detail?.seat_number ? ` (seat ${err.detail.seat_number})` : ''} Please choose a different traveller for that seat, or a different journey.`);
+        // Preserve seat selections per doc §5.5 — do not clear state here.
+      } else if (err.code === 'guest_matches_saved_traveller') {
+        Alert.alert(
+          'Traveller already saved',
+          'This phone number matches a traveller you already saved. Please select or reactivate that saved traveller instead of entering it as a guest.'
+        );
+      } else if (err.code === 'traveller_matches_account_owner') {
+        Alert.alert('Use Self', 'That traveller matches your own account. Please choose "Self" for that seat instead.');
+      } else if (err.code === 'validation_error') {
+        Alert.alert('Check traveller details', err.message);
       } else {
         Alert.alert('Error', err.message);
       }
     } finally {
       setLoading(false);
+      setInFlight(false);
     }
   };
 
   const handlePaymentSuccess = async (paymentData) => {
+    if (inFlight) return;
+    setInFlight(true);
+    setPaymentUiState('checking');
     try {
-      await verifyBookingSessionPayment(currentSession.id, {
+      const result = await verifyBookingSessionPayment(currentSession.id, {
         razorpay_order_id: currentPaymentOrder.razorpay_order_id,
         razorpay_payment_id: paymentData.razorpay_payment_id,
         razorpay_signature: paymentData.razorpay_signature,
       });
-      Alert.alert('Success', `Booking confirmed for ${selectedSeats.length} seat(s)`);
+      const confirmedSession = result.booking_session;
+      setCurrentSession(confirmedSession);
+      setPaymentUiState('confirmed');
       setPaymentModalVisible(false);
       navigation.navigate('BookingConfirmation', {
-        sessionId: currentSession.id,
+        sessionId: confirmedSession.id,
         seats: selectedSeats,
-        fare: fareAmount * selectedSeats.length,
+        // Authoritative gross charge from the confirmed session snapshot —
+        // never the client-multiplied estimate. Doc §3.1/§4.3.
+        fare: confirmedSession.total_fare_amount,
         routeName,
         scheduledTrip,
       });
     } catch (err) {
-      Alert.alert('Error', err.message || 'Payment verification failed');
       setPaymentModalVisible(false);
+      if (err.code === 'invalid_payment_signature') {
+        Alert.alert('Verification failed', 'We could not verify this payment. Please contact support before retrying.');
+        setPaymentUiState('closed');
+      } else if (err.code === 'payment_amount_mismatch' || err.code === 'payment_order_mismatch') {
+        Alert.alert('Payment mismatch', 'Something looked wrong with this payment. Please refresh and try again.');
+        setPaymentUiState('retry_available');
+      } else {
+        Alert.alert('Verification pending', err.message || 'Payment verification failed. You can safely retry.');
+        setPaymentUiState('retry_available');
+      }
+    } finally {
+      setInFlight(false);
+    }
+  };
+
+  // Safe resume/retry per doc §6.3/§6.4 — used for dismissed checkout, network
+  // failure, or a failed attempt. Reconciles with Razorpay before deciding.
+  const resumePayment = async () => {
+    if (!currentSession || inFlight) return;
+    setInFlight(true);
+    setPaymentUiState('checking');
+    try {
+      const result = await retryBookingSessionPayment(currentSession.id);
+      setCurrentSession(result.booking_session);
+
+      if (!result.payment_order) {
+        // Already succeeded — confirm without reopening checkout.
+        setPaymentUiState('confirmed');
+        navigation.navigate('BookingConfirmation', {
+          sessionId: result.booking_session.id,
+          seats: selectedSeats,
+          fare: result.booking_session.total_fare_amount,
+          routeName,
+          scheduledTrip,
+        });
+        return;
+      }
+
+      setCurrentPaymentOrder(result.payment_order);
+      setPaymentUiState('checkout_open');
+      setPaymentModalVisible(true);
+    } catch (err) {
+      if (err.code === 'payment_processing') {
+        setPaymentUiState('checking');
+        Alert.alert('Confirming payment', 'Your payment is being confirmed. Pull to refresh My Bookings shortly.');
+      } else if (err.code === 'payment_hold_expired' || err.code === 'booking_session_not_retryable') {
+        setPaymentUiState('closed');
+        Alert.alert('Booking closed', 'The seat hold for this booking has ended. Please search again and book fresh seats.');
+      } else {
+        setPaymentUiState('retry_available');
+        Alert.alert('Error', err.message || 'Could not resume payment');
+      }
+    } finally {
+      setInFlight(false);
     }
   };
 
   const handlePaymentError = (msg) => {
-    Alert.alert('Payment Error', msg);
     setPaymentModalVisible(false);
+    // A dismissed Razorpay modal does not prove the payment failed — offer
+    // the safe retry path instead of a dead-end alert. Doc §6.3.
+    if (currentSession && canRetryPayment(currentSession)) {
+      setPaymentUiState('retry_available');
+    } else {
+      Alert.alert('Payment Error', msg);
+      setPaymentUiState('idle');
+    }
   };
 
   const paymentOrderData = currentPaymentOrder ? {
@@ -329,17 +432,69 @@ export default function SeatSelectionScreen({ route, navigation }) {
                 <Text style={[T.bodySm, { color:C.gold }]}>{getAssignmentLabel(seat)}</Text>
               </View>
             ))}
-            <View style={{ marginTop:12, paddingTop:12, borderTopWidth:1, borderTopColor:C.border, flexDirection:'row', justifyContent:'space-between' }}>
-              <Text style={T.bodyLg}>Total</Text>
-              <Text style={{ fontSize:18, fontWeight:'bold', color:C.gold }}>₹{fareAmount * selectedSeats.length}</Text>
+            <View style={{ marginTop:12, paddingTop:12, borderTopWidth:1, borderTopColor:C.border }}>
+              {currentSession ? (
+                // Authoritative snapshot once a session exists — never
+                // recomputed client-side. Doc §3.2/§4.3.
+                <>
+                  {parseFloat(currentSession.total_tax_amount) > 0 && (
+                    <>
+                      <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:4 }}>
+                        <Text style={T.bodySm}>Taxable value</Text>
+                        <Text style={T.bodySm}>₹{currentSession.total_taxable_amount}</Text>
+                      </View>
+                      <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:4 }}>
+                        <Text style={T.bodySm}>GST ({currentSession.gst_inclusive_snapshot ? 'included' : 'added'})</Text>
+                        <Text style={T.bodySm}>₹{currentSession.total_tax_amount}</Text>
+                      </View>
+                    </>
+                  )}
+                  <View style={{ flexDirection:'row', justifyContent:'space-between', marginTop:6 }}>
+                    <Text style={T.bodyLg}>Total</Text>
+                    <Text style={{ fontSize:18, fontWeight:'bold', color:C.gold }}>₹{currentSession.total_fare_amount}</Text>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={{ flexDirection:'row', justifyContent:'space-between' }}>
+                    <Text style={T.bodyLg}>Total (estimate)</Text>
+                    <Text style={{ fontSize:18, fontWeight:'bold', color:C.gold }}>₹{fareAmount * selectedSeats.length}</Text>
+                  </View>
+                  {farePreview?.gst_applicable && (
+                    <Text style={[T.bodySm, { color:C.textMuted, marginTop:4 }]}>
+                      {farePreview.gst_inclusive ? 'GST included' : 'plus GST'} — exact amount confirmed at checkout
+                    </Text>
+                  )}
+                </>
+              )}
             </View>
+          </View>
+        )}
+
+        {paymentUiState === 'retry_available' && (
+          <View style={{ marginHorizontal:20, marginBottom:10, padding:16, backgroundColor:'rgba(201,168,76,0.1)', borderRadius:18, borderWidth:1, borderColor:'rgba(201,168,76,0.35)' }}>
+            <Text style={[T.bodyMd, { marginBottom:10 }]}>
+              Checkout was closed before payment completed. Your seats are still held — you can safely resume.
+            </Text>
+            <CustomButton
+              title={inFlight ? 'Checking...' : 'Resume Payment'}
+              onPress={resumePayment}
+              disabled={inFlight}
+              buttonColor="gold"
+            />
+          </View>
+        )}
+
+        {paymentUiState === 'closed' && (
+          <View style={{ marginHorizontal:20, marginBottom:10, padding:16, backgroundColor:'rgba(212,70,70,0.08)', borderRadius:18, borderWidth:1, borderColor:'rgba(212,70,70,0.3)' }}>
+            <Text style={T.bodyMd}>This booking's seat hold has ended. Please search again to book fresh seats.</Text>
           </View>
         )}
 
         <CustomButton
           title={loading ? 'Processing...' : `Confirm & Pay ₹${fareAmount * selectedSeats.length}`}
           onPress={handleConfirm}
-          disabled={loading || selectedSeats.length === 0 || !tripBookable}
+          disabled={loading || inFlight || selectedSeats.length === 0 || !tripBookable || paymentUiState === 'retry_available' || paymentUiState === 'closed'}
           style={{ marginHorizontal:20, marginBottom:30 }}
           buttonColor="gold"
         />
@@ -378,10 +533,13 @@ export default function SeatSelectionScreen({ route, navigation }) {
           <View style={{ flex:1, backgroundColor:'rgba(0,0,0,0.85)', justifyContent:'center', alignItems:'center', padding:24 }}>
             <LinearGradient colors={[C.surface, C.surfaceUp]} style={{ borderRadius:28, padding:24, width:'100%', borderWidth:1, borderColor:C.border }}>
               <Text style={T.displayMd}>Guest traveller</Text>
-              <TextInput style={styles.input} placeholder="Full name" placeholderTextColor={C.textMuted} value={guestForm.full_name} onChangeText={t => setGuestForm({...guestForm, full_name:t})} />
-              <TextInput style={styles.input} placeholder="Phone" placeholderTextColor={C.textMuted} value={guestForm.phone} onChangeText={t => setGuestForm({...guestForm, phone:t})} keyboardType="phone-pad" />
-              <TextInput style={styles.input} placeholder="Email (optional)" placeholderTextColor={C.textMuted} value={guestForm.email} onChangeText={t => setGuestForm({...guestForm, email:t})} autoCapitalize="none" />
-              <TextInput style={styles.input} placeholder="Relationship (optional)" placeholderTextColor={C.textMuted} value={guestForm.relationship_label} onChangeText={t => setGuestForm({...guestForm, relationship_label:t})} />
+              <TextInput style={styles.input} placeholder="Full name" placeholderTextColor={C.textMuted} value={guestForm.full_name} onChangeText={t => setGuestForm({...guestForm, full_name:t})} maxLength={120} />
+              {guestErrors.full_name && <Text style={styles.errorText}>{guestErrors.full_name}</Text>}
+              <TextInput style={styles.input} placeholder="Phone" placeholderTextColor={C.textMuted} value={guestForm.phone} onChangeText={t => setGuestForm({...guestForm, phone:t})} keyboardType="phone-pad" maxLength={20} />
+              {guestErrors.phone && <Text style={styles.errorText}>{guestErrors.phone}</Text>}
+              <TextInput style={styles.input} placeholder="Email (optional)" placeholderTextColor={C.textMuted} value={guestForm.email} onChangeText={t => setGuestForm({...guestForm, email:t})} autoCapitalize="none" maxLength={255} />
+              {guestErrors.email && <Text style={styles.errorText}>{guestErrors.email}</Text>}
+              <TextInput style={styles.input} placeholder="Relationship (optional)" placeholderTextColor={C.textMuted} value={guestForm.relationship_label} onChangeText={t => setGuestForm({...guestForm, relationship_label:t})} maxLength={80} />
               <View style={{ flexDirection:'row', gap:12, marginTop:16 }}>
                 <TouchableOpacity onPress={() => setGuestModalVisible(false)} style={{ flex:1, backgroundColor:C.surfaceHigh, borderRadius:16, paddingVertical:12, alignItems:'center' }}>
                   <Text style={T.bodyMd}>Cancel</Text>
@@ -399,5 +557,6 @@ export default function SeatSelectionScreen({ route, navigation }) {
 }
 
 const styles = {
-  input: { backgroundColor: C.surfaceUp, borderWidth:1, borderColor:C.border, borderRadius:14, padding:12, color:C.textPrimary, marginBottom:12 }
+  input: { backgroundColor: C.surfaceUp, borderWidth:1, borderColor:C.border, borderRadius:14, padding:12, color:C.textPrimary, marginBottom:12 },
+  errorText: { color: C.red, fontSize: 12, marginTop: -8, marginBottom: 10 },
 };

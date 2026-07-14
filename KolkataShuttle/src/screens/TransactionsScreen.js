@@ -106,7 +106,13 @@ export default function TransactionsScreen({ navigation }) {
       const invoiceData = await getInvoice(bookingId);
       await generateInvoicePDF(invoiceData);
     } catch (error) {
-      Alert.alert('Error', error.message || 'Invoice not available for this booking');
+      if (error.code === 'invoice_not_available') {
+        Alert.alert('Invoice not ready', 'The invoice is available once this trip is completed and paid.');
+      } else if (error.code === 'paid_payment_not_found') {
+        Alert.alert('Invoice unavailable', 'No paid payment was found for this booking.');
+      } else {
+        Alert.alert('Error', error.message || 'Invoice not available for this booking');
+      }
     } finally {
       setInvoiceLoading(prev => ({ ...prev, [bookingId]: false }));
     }
@@ -136,7 +142,12 @@ export default function TransactionsScreen({ navigation }) {
           </View>
           <Text style={[T.bodySm, { marginBottom: 4 }]}>{pickupName} → {dropoffName}</Text>
           <Text style={[T.bodySm, { color: C.textMuted, marginBottom: 6 }]}>{date} at {time}</Text>
-          <Text style={[T.displayMd, { color: C.gold, marginBottom: 8 }]}>₹{amount}</Text>
+          <Text style={[T.displayMd, { color: C.gold, marginBottom: 4 }]}>₹{amount}</Text>
+          {parseFloat(item.total_tax_amount) > 0 && (
+            <Text style={[T.bodySm, { color: C.textMuted, marginBottom: 4 }]}>
+              incl. GST ₹{parseFloat(item.total_tax_amount).toFixed(2)}
+            </Text>
+          )}
           {isCompleted && (
             <TouchableOpacity
               onPress={() => handleInvoice(item.booking_id)}
