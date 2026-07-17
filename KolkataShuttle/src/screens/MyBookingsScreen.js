@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -144,15 +144,17 @@ const isSessionOngoing = (session, trip, now) => {
     return false;
   }
 
-  const start = parseApiDate(trip?.planned_start_at);
+  // A trip only becomes "ongoing" when the driver actually starts it
+  // server-side — not just because the clock passed planned_start_at
+  // (the driver may run late, or not run at all that day). A boarded scan
+  // is also treated as ongoing since boarding can't happen before the
+  // driver has the trip underway.
+  const driverHasStarted = trip?.status === 'in_progress' || Boolean(trip?.actual_start_at);
 
   return (
     session?.status === 'confirmed' &&
     hasBookedOrBoardedSeat(session) &&
-    (
-      hasBoardedSeat(session) ||
-      (start && start <= now)
-    )
+    (hasBoardedSeat(session) || driverHasStarted)
   );
 };
 
@@ -165,12 +167,15 @@ const isSessionUpcoming = (session, trip, now) => {
     return false;
   }
 
-  const start = parseApiDate(trip?.planned_start_at);
-
+  // No time comparison here on purpose: a session stays "upcoming" for as
+  // long as it's neither ongoing (driver started) nor history, even if its
+  // planned_start_at has already passed (e.g. the driver is running late).
+  // Gating this on `planned_start_at > now` would make a delayed trip
+  // disappear from every tab the moment its scheduled time passed but
+  // before the driver actually started it.
   return (
     (session?.status === 'pending_payment' || session?.status === 'confirmed') &&
-    hasActiveSeat(session) &&
-    (!start || start > now)
+    hasActiveSeat(session)
   );
 };
 
@@ -419,20 +424,20 @@ export default function MyBookingsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTab] = useState('upcoming');
-  const [sessions, setSessions] = useState([]);
+  const [allSessions, setAllSessions] = useState([]); // all enriched sessions, unfiltered by tab
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [driverModalVisible, setDriverModalVisible] = useState(false);
   const [currentDriverInfo, setCurrentDriverInfo] = useState(null);
   const [debugRawData, setDebugRawData] = useState(null);
 
-  const loadData = useCallback(async (refresh = false) => {
-    if (refresh) setRefreshing(true);
-    else setLoading(true);
+  const loadData = useCallback(async (refresh = false, silent = false) => {
+    if (!silent) {
+      if (refresh) setRefreshing(true);
+      else setLoading(true);
+    }
 
     try {
-      const now = new Date();
-
       const allRes = await getBookingSessions();
       const allItems = parseResponse(allRes);
 
@@ -460,44 +465,30 @@ export default function MyBookingsScreen({ navigation }) {
         unique.map((session) => enrichSessionWithTrip(session, tripCache))
       );
 
-      let filtered = [];
-
-      if (activeTab === 'upcoming') {
-        filtered = enriched.filter((session) =>
-          isSessionUpcoming(session, session.scheduled_trip, now)
-        );
-      } else if (activeTab === 'ongoing') {
-        filtered = enriched.filter((session) =>
-          isSessionOngoing(session, session.scheduled_trip, now)
-        );
-      } else {
-        filtered = enriched.filter((session) =>
-          isSessionHistory(session, session.scheduled_trip, now)
-        );
-      }
-
-      filtered = sortSessionsForTab(filtered, activeTab);
-
       console.log(`[DEBUG] Unique sessions: ${unique.length}`);
-      console.log(`[DEBUG] Filtered ${activeTab} count: ${filtered.length}`);
 
       setDebugRawData({
         totalCount: allItems.length,
         uniqueCount: unique.length,
-        filteredCount: filtered.length,
         firstSession: enriched[0] || allItems[0],
       });
 
-      setSessions(filtered);
+      setAllSessions(enriched);
     } catch (err) {
       console.error('Load error:', err);
-      Alert.alert('Error', err?.message || 'Could not load bookings');
+      if (!silent) Alert.alert('Error', err?.message || 'Could not load bookings');
     } finally {
-      if (refresh) setRefreshing(false);
-      else setLoading(false);
+      if (!silent) {
+        if (refresh) setRefreshing(false);
+        else setLoading(false);
+      }
     }
-  }, [activeTab]);
+  }, []);
 
+  // Fetching no longer depends on activeTab — getBookingSessions() already
+  // returns everything regardless of tab, and switching tabs is now a pure
+  // client-side re-filter (see `sessions` below), so there's no need to
+  // re-hit the network just because the user tapped a different tab.
   useEffect(() => {
     loadData();
 
@@ -507,6 +498,36 @@ export default function MyBookingsScreen({ navigation }) {
 
     return () => eventEmitter.off('refreshData', handleRefresh);
   }, [loadData]);
+
+  // Upcoming -> ongoing now depends entirely on the driver actually starting
+  // the trip server-side, which normally reaches us via the refresh
+  // WebSocket (trip_status resource). This silent poll is just a fallback in
+  // case that event is ever missed — it never shows a spinner.
+  useEffect(() => {
+    const interval = setInterval(() => loadData(false, true), 30000);
+    return () => clearInterval(interval);
+  }, [loadData]);
+
+  const sessions = useMemo(() => {
+    const now = new Date();
+    let filtered;
+
+    if (activeTab === 'upcoming') {
+      filtered = allSessions.filter((session) =>
+        isSessionUpcoming(session, session.scheduled_trip, now)
+      );
+    } else if (activeTab === 'ongoing') {
+      filtered = allSessions.filter((session) =>
+        isSessionOngoing(session, session.scheduled_trip, now)
+      );
+    } else {
+      filtered = allSessions.filter((session) =>
+        isSessionHistory(session, session.scheduled_trip, now)
+      );
+    }
+
+    return sortSessionsForTab(filtered, activeTab);
+  }, [allSessions, activeTab]);
 
   const onRefresh = () => loadData(true);
 
@@ -617,50 +638,50 @@ export default function MyBookingsScreen({ navigation }) {
   const DebugView = () => {
     if (!debugRawData) return null;
 
-    return (
-      <View style={{
-        padding: 16,
-        backgroundColor: '#1a1a2e',
-        marginTop: 20,
-        borderRadius: 12,
-        marginHorizontal: 16,
-      }}>
-        <Text style={{ color: '#fbbf24', fontWeight: 'bold', marginBottom: 8 }}>
-          🔍 Debug Info
-        </Text>
+    // return (
+    //   <View style={{
+    //     padding: 16,
+    //     backgroundColor: '#1a1a2e',
+    //     marginTop: 20,
+    //     borderRadius: 12,
+    //     marginHorizontal: 16,
+    //   }}>
+    //     <Text style={{ color: '#fbbf24', fontWeight: 'bold', marginBottom: 8 }}>
+    //       🔍 Debug Info
+    //     </Text>
 
-        <Text style={{ color: '#aaa', fontSize: 12 }}>
-          Total sessions from API: {debugRawData.totalCount}
-        </Text>
+    //     <Text style={{ color: '#aaa', fontSize: 12 }}>
+    //       Total sessions from API: {debugRawData.totalCount}
+    //     </Text>
 
-        <Text style={{ color: '#aaa', fontSize: 12 }}>
-          Unique sessions: {debugRawData.uniqueCount}
-        </Text>
+    //     <Text style={{ color: '#aaa', fontSize: 12 }}>
+    //       Unique sessions: {debugRawData.uniqueCount}
+    //     </Text>
 
-        <Text style={{ color: '#aaa', fontSize: 12 }}>
-          Filtered {activeTab}: {debugRawData.filteredCount}
-        </Text>
+    //     <Text style={{ color: '#aaa', fontSize: 12 }}>
+    //       Filtered {activeTab}: {sessions.length}
+    //     </Text>
 
-        {debugRawData.firstSession ? (
-          <Text style={{ color: '#aaa', fontSize: 10, marginTop: 4 }}>
-            Sample: {JSON.stringify(debugRawData.firstSession).substring(0, 300)}...
-          </Text>
-        ) : null}
+    //     {debugRawData.firstSession ? (
+    //       <Text style={{ color: '#aaa', fontSize: 10, marginTop: 4 }}>
+    //         Sample: {JSON.stringify(debugRawData.firstSession).substring(0, 300)}...
+    //       </Text>
+    //     ) : null}
 
-        <TouchableOpacity
-          onPress={() => loadData(true)}
-          style={{
-            marginTop: 12,
-            backgroundColor: C.gold,
-            padding: 10,
-            borderRadius: 8,
-            alignItems: 'center',
-          }}
-        >
-          <Text style={{ color: '#000', fontWeight: 'bold' }}>Refresh</Text>
-        </TouchableOpacity>
-      </View>
-    );
+    //     <TouchableOpacity
+    //       onPress={() => loadData(true)}
+    //       style={{
+    //         marginTop: 12,
+    //         backgroundColor: C.gold,
+    //         padding: 10,
+    //         borderRadius: 8,
+    //         alignItems: 'center',
+    //       }}
+    //     >
+    //       <Text style={{ color: '#000', fontWeight: 'bold' }}>Refresh</Text>
+    //     </TouchableOpacity>
+    //   </View>
+    // );
   };
 
   return (

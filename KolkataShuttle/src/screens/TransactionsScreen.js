@@ -134,11 +134,22 @@ export default function TransactionsScreen({ navigation }) {
     loadTransactions();
   };
 
-  const handleInvoice = async (bookingId) => {
-    setInvoiceLoading(prev => ({ ...prev, [bookingId]: true }));
+  const handleInvoice = async (item) => {
+    // Doc: booking_id is null for booking_session payments — every seat's
+    // booking id lives in booking_ids instead. Download the first seat's
+    // invoice and tell the passenger where to find the rest.
+    const bookingId = item.booking_id || item.booking_ids?.[0];
+    if (!bookingId) {
+      Alert.alert('Invoice unavailable', 'No booking is associated with this payment.');
+      return;
+    }
+    setInvoiceLoading(prev => ({ ...prev, [item.payment_id]: true }));
     try {
       const invoiceData = await getInvoice(bookingId);
       await generateInvoicePDF(invoiceData);
+      if ((item.booking_ids?.length || 0) > 1) {
+        Alert.alert('Downloaded', `Invoice for seat ${item.seat_number ?? 1} downloaded. Open the booking to download invoices for the other seats.`);
+      }
     } catch (error) {
       if (error.code === 'invoice_not_available') {
         Alert.alert('Invoice not ready', 'The invoice is available once this trip is completed and paid.');
@@ -148,7 +159,7 @@ export default function TransactionsScreen({ navigation }) {
         Alert.alert('Error', error.message || 'Invoice not available for this booking');
       }
     } finally {
-      setInvoiceLoading(prev => ({ ...prev, [bookingId]: false }));
+      setInvoiceLoading(prev => ({ ...prev, [item.payment_id]: false }));
     }
   };
 
@@ -160,11 +171,35 @@ export default function TransactionsScreen({ navigation }) {
     const amount = parseFloat(item.amount).toFixed(2);
     const date = new Date(item.created_at).toLocaleDateString();
     const time = new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const isCompleted = item.booking_status === 'completed' && item.payment_status === 'paid';
-    const isLoading = invoiceLoading[item.booking_id];
+    // Doc: booking_status is null for booking_session payments — it only
+    // exists on direct/single-booking payments. Gate the invoice button on
+    // the payment's own effective_status instead, or session-based invoices
+    // (the common case in this app) would never show a download button.
+    const isCompleted = effectiveStatus === 'paid';
+    const isLoading = invoiceLoading[item.payment_id];
+    const isSession = item.payment_source === 'booking_session';
 
     return (
-      <TouchableOpacity onPress={() => navigation.navigate('BookingDetail', { bookingId: item.booking_id })} activeOpacity={0.8}>
+      <TouchableOpacity
+        onPress={() => {
+          if (isSession && item.booking_session_id) {
+            navigation.navigate('BookingDetail', { sessionId: item.booking_session_id });
+          } else if (!isSession && item.booking_id) {
+            // Direct/legacy single-booking payment — this app's own booking
+            // flow always creates booking_session payments, so this path is
+            // only reachable for bookings made outside this app. There's no
+            // direct-booking detail screen yet, so surface what we already
+            // have instead of navigating into a broken session lookup.
+            Alert.alert(
+              routeName,
+              `${pickupName} → ${dropoffName}\n${date} at ${time}\n₹${amount} · ${effectiveStatus}`
+            );
+          } else {
+            Alert.alert('Unavailable', 'Booking details are not available for this transaction.');
+          }
+        }}
+        activeOpacity={0.8}
+      >
         <LinearGradient colors={[C.surfaceUp, C.surface]} style={{ borderRadius: 20, padding: 16, marginHorizontal: 16, marginBottom: 12, borderWidth: 1, borderColor: C.border }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <Text style={[T.bodyMd, { flex: 1 }]}>{routeName}</Text>
@@ -182,13 +217,17 @@ export default function TransactionsScreen({ navigation }) {
               incl. GST ₹{parseFloat(item.total_tax_amount).toFixed(2)}
             </Text>
           )}
+          {effectiveStatus === 'failed' && item.failure?.message && (
+            <Text style={[T.bodySm, { color: C.red, marginBottom: 4 }]}>{item.failure.message}</Text>
+          )}
           {isCompleted && (
             <TouchableOpacity
-              onPress={() => handleInvoice(item.booking_id)}
+              onPress={() => handleInvoice(item)}
               disabled={isLoading}
               style={{ backgroundColor: C.goldDim, borderRadius: 30, paddingVertical: 8, paddingHorizontal: 16, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', marginTop: 4 }}
             >
               <Ionicons name="document-text-outline" size={16} color={C.gold} />
+
               <Text style={{ color: C.gold, marginLeft: 6, fontWeight: 'bold', fontSize: 12 }}>{isLoading ? 'Generating...' : 'Download Invoice'}</Text>
             </TouchableOpacity>
           )}
