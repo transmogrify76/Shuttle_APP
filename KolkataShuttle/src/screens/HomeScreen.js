@@ -22,14 +22,12 @@ import OSMMap from '../components/OSMMap';
 import AnimatedButton from '../components/AnimatedButton';
 import { useAuth } from '../context/AuthContext';
 import {
-  listRoutes,
-  listScheduledTrips,
-  getRouteDetails,
+  listStops,
+  getRouteTripOptions,
+  searchStops,
 } from '../services/routeApi';
 import {
-  previewFare,
   getDriverVehicleInfo,
-  getLegAvailableSeats,
   getPassengerProfile,
 } from '../services/bookingApi';
 import { getRouteBetweenStops } from '../services/routingApi';
@@ -37,11 +35,11 @@ import { fetchProfile } from '../services/profileApi';
 import { eventEmitter } from '../utils/eventEmitter';
 
 // Resources whose changes should refresh what's on the home/search screen,
-// per the passenger API refresh WebSocket contract: new/updated routes and
-// stops, newly created or catalog-relevant trips, and seat availability.
-const HOME_ROUTE_RESOURCES = new Set(['routes', 'stops']);
-const HOME_TRIP_RESOURCES = new Set(['route_trip_options', 'scheduled_trips']);
-const HOME_SEAT_RESOURCES = new Set(['seat_availability']);
+// per the passenger API refresh WebSocket contract: new/updated stops mean
+// the stop pickers may be stale; new/changed trips or seat counts mean the
+// current from→to search results may be stale.
+const HOME_STOPS_RESOURCES = new Set(['routes', 'stops']);
+const HOME_SEARCH_RESOURCES = new Set(['route_trip_options', 'scheduled_trips', 'seat_availability']);
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 const BOTTOM_SHEET_MAX_HEIGHT = screenHeight * 0.72;
@@ -102,13 +100,58 @@ const GoldTag = ({ label }) => (
 );
 
 // ─── STOP SELECTOR (unchanged) ──────────────────────────────────────────────
-const StopSelector = ({ stops, selectedId, onSelect, label, icon, accent }) => {
+const StopSelector = ({ stops, selectedId, onSelect, label, icon, accent, userLocation, excludeId }) => {
   const [modalVisible, setModalVisible] = useState(false);
+  const [query, setQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(null); // null = show the static `stops` list
+  const [searching, setSearching] = useState(false);
+  const debounceRef = useRef(null);
   const scale = useRef(new Animated.Value(1)).current;
   const selectedStop = stops?.find(s => s.stop?.id === selectedId);
 
   const pressIn = () => Animated.spring(scale, { toValue: 0.96, useNativeDriver: true, speed: 40 }).start();
   const pressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20 }).start();
+
+  // Debounced fuzzy/nearby search. The endpoint requires query OR lat/lng —
+  // with neither (empty box, no location permission) we just fall back to
+  // the full static stop list already loaded on Home. Also re-runs when the
+  // modal opens so "nearby" results are fresh without requiring a keystroke.
+  useEffect(() => {
+    if (!modalVisible) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const trimmed = query.trim();
+    if (!trimmed && !userLocation) {
+      setSearchResults(null);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await searchStops({
+          query: trimmed || undefined,
+          lat: userLocation?.lat,
+          lng: userLocation?.lng,
+          radiusKm: userLocation ? 10 : undefined,
+          limit: 30,
+        });
+        setSearchResults((res.items || []).map((item) => ({ stop: item, name_match_score: item.name_match_score, distance_km: item.distance_km })));
+      } catch (err) {
+        console.warn('[StopSelector] search failed', err);
+        setSearchResults(null);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query, userLocation?.lat, userLocation?.lng, modalVisible]);
+
+  const displayList = searchResults !== null ? searchResults : stops;
+
+  const closeAndReset = () => {
+    setModalVisible(false);
+    setQuery('');
+    setSearchResults(null);
+  };
 
   return (
     <>
@@ -143,51 +186,96 @@ const StopSelector = ({ stops, selectedId, onSelect, label, icon, accent }) => {
       </TouchableOpacity>
 
       {/* Stop Modal */}
-      <Modal visible={modalVisible} transparent animationType="fade">
+      <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={closeAndReset}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' }}>
           <View style={{
             backgroundColor: C.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28,
-            borderTopWidth: 1, borderColor: C.borderStrong, maxHeight: screenHeight * 0.65,
+            borderTopWidth: 1, borderColor: C.borderStrong, maxHeight: screenHeight * 0.72,
           }}>
             <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 8 }}>
               <View style={{ width: 36, height: 4, backgroundColor: C.surfaceHigh, borderRadius: 2 }} />
             </View>
             <View style={{ paddingHorizontal: 24, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <Text style={T.displayMd}>{label}</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={{ padding: 6 }}>
+              <TouchableOpacity onPress={closeAndReset} style={{ padding: 6 }}>
                 <Ionicons name="close" size={22} color={C.textSecondary} />
               </TouchableOpacity>
             </View>
+
+            {/* Search box — fuzzy name search, tolerant of typos/spacing/case */}
+            <View style={{ paddingHorizontal: 24, paddingBottom: 12 }}>
+              <View style={{
+                flexDirection: 'row', alignItems: 'center', backgroundColor: C.surfaceHigh,
+                borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingHorizontal: 14,
+              }}>
+                <Ionicons name="search" size={16} color={C.textMuted} />
+                <TextInput
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder="Search stops..."
+                  placeholderTextColor={C.textMuted}
+                  style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 10, color: C.textPrimary, fontSize: 14 }}
+                  autoCorrect={false}
+                />
+                {searching && <ActivityIndicator size="small" color={C.gold} />}
+                {!searching && query.length > 0 && (
+                  <TouchableOpacity onPress={() => setQuery('')}>
+                    <Ionicons name="close-circle" size={16} color={C.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </View>
+              {userLocation && !query && (
+                <Text style={[T.bodySm, { color: C.textMuted, marginTop: 6 }]}>Showing stops near you</Text>
+              )}
+            </View>
+
             <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}>
-              {stops?.map((stop, idx) => (
-                <TouchableOpacity
-                  key={stop.stop?.id || idx}
-                  onPress={() => { onSelect(stop.stop?.id); setModalVisible(false); }}
-                  style={{
-                    flexDirection: 'row', alignItems: 'center',
-                    paddingVertical: 14,
-                    borderBottomWidth: 1, borderColor: C.border,
-                  }}
-                >
-                  <View style={{
-                    width: 28, height: 28, borderRadius: 8,
-                    backgroundColor: selectedId === stop.stop?.id ? C.goldDim : C.surfaceHigh,
-                    alignItems: 'center', justifyContent: 'center', marginRight: 14,
-                    borderWidth: selectedId === stop.stop?.id ? 1 : 0,
-                    borderColor: 'rgba(201,168,76,0.4)',
-                  }}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: selectedId === stop.stop?.id ? C.gold : C.textMuted }}>
-                      {idx + 1}
-                    </Text>
-                  </View>
-                  <Text style={selectedId === stop.stop?.id ? [T.bodyMd, { color: C.gold }] : T.bodyMd}>
-                    {stop.stop?.name}
-                  </Text>
-                  {selectedId === stop.stop?.id && (
-                    <Ionicons name="checkmark" size={16} color={C.gold} style={{ marginLeft: 'auto' }} />
-                  )}
-                </TouchableOpacity>
-              ))}
+              {displayList?.length === 0 && (
+                <Text style={[T.bodySm, { color: C.textMuted, textAlign: 'center', paddingVertical: 20 }]}>
+                  No stops found
+                </Text>
+              )}
+              {displayList?.map((stop, idx) => {
+                const isExcluded = excludeId && stop.stop?.id === excludeId;
+                const isSelected = selectedId === stop.stop?.id;
+                return (
+                  <TouchableOpacity
+                    key={stop.stop?.id || idx}
+                    disabled={isExcluded}
+                    onPress={() => { onSelect(stop.stop?.id); closeAndReset(); }}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center',
+                      paddingVertical: 14,
+                      borderBottomWidth: 1, borderColor: C.border,
+                      opacity: isExcluded ? 0.4 : 1,
+                    }}
+                  >
+                    <View style={{
+                      width: 28, height: 28, borderRadius: 8,
+                      backgroundColor: isSelected ? C.goldDim : C.surfaceHigh,
+                      alignItems: 'center', justifyContent: 'center', marginRight: 14,
+                      borderWidth: isSelected ? 1 : 0,
+                      borderColor: 'rgba(201,168,76,0.4)',
+                    }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: isSelected ? C.gold : C.textMuted }}>
+                        {idx + 1}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={isSelected ? [T.bodyMd, { color: C.gold }] : T.bodyMd}>
+                        {stop.stop?.name}
+                      </Text>
+                      {isExcluded && <Text style={[T.bodySm, { color: C.textMuted, fontSize: 11 }]}>Already selected as the other stop</Text>}
+                      {!isExcluded && stop.distance_km != null && (
+                        <Text style={[T.bodySm, { color: C.textMuted, fontSize: 11 }]}>{parseFloat(stop.distance_km).toFixed(1)} km away</Text>
+                      )}
+                    </View>
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={16} color={C.gold} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
         </View>
@@ -480,90 +568,106 @@ const Skeleton = ({ width, height, borderRadius = 8 }) => {
   return <Animated.View style={{ width, height, borderRadius, backgroundColor: C.surfaceHigh, opacity }} />;
 };
 
+// ─── TRIP NORMALIZATION ──────────────────────────────────────────────────
+// /passenger/route-trip-options nests trips inside route options, with fare/
+// GST/AC on the option and seats/vehicle/driver/timing on the trip. Flatten
+// the two into the single shape RideCard/TripStopModal/handleConfirm expect,
+// keeping the raw pieces around (__raw/__option) for re-matching after a
+// refresh and for building the booking-session request.
+const normalizeTrip = (apiTrip, option) => ({
+  id: apiTrip.scheduled_trip_id,
+  route_id: option.route?.id,
+  route_name: option.route?.name,
+  has_ac: option.route?.has_ac,
+  planned_start_at: apiTrip.pickup_planned_time,
+  dropoff_planned_time: apiTrip.dropoff_planned_time,
+  vehicle: apiTrip.vehicle,
+  driver: apiTrip.driver,
+  trip_from_stop: apiTrip.pickup_stop,
+  trip_to_stop: apiTrip.dropoff_stop,
+  stops: option.route?.stops || [],
+  available_seats: apiTrip.available_seats,
+  seat_capacity: apiTrip.seat_capacity,
+  trip_bookable: apiTrip.trip_bookable,
+  fare_amount: option.fare_amount,
+  gst_applicable: option.gst_applicable,
+  gst_inclusive: option.gst_inclusive,
+  total_tax_amount: option.total_tax_amount,
+  __raw: apiTrip,
+  __option: option,
+});
+
 // ─── MAIN SCREEN ───────────────────────────────────────────────────────────
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [userName, setUserName] = useState('');
+  const [userLocation, setUserLocation] = useState(null); // { lat, lng } — best-effort, for nearby stop search
   const [profileLoading, setProfileLoading] = useState(true);
   const [hasPassengerProfile, setHasPassengerProfile] = useState(false);
 
-  const [routesData, setRoutesData] = useState([]);
-  const [selectedRoute, setSelectedRoute] = useState(null);
-  const [stops, setStops] = useState([]);
-  const [trips, setTrips] = useState([]);
-  const [selectedTrip, setSelectedTrip] = useState(null);
+  const [allStops, setAllStops] = useState([]); // [{ stop: {...} }] — wrapped to match StopSelector's existing shape
   const [pickupStopId, setPickupStopId] = useState(null);
   const [dropoffStopId, setDropoffStopId] = useState(null);
-  const [fare, setFare] = useState(null);
+  const [routeOptions, setRouteOptions] = useState([]); // raw items[] from /passenger/route-trip-options
+  const [selectedTrip, setSelectedTrip] = useState(null); // normalized trip (see normalizeTrip)
+  const [searching, setSearching] = useState(false);
   const [loading, setLoading] = useState(false);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [tripStopModalVisible, setTripStopModalVisible] = useState(false);
   const [selectedTripStops, setSelectedTripStops] = useState([]);
   const [driverModalVisible, setDriverModalVisible] = useState(false);
   const [currentDriverInfo, setCurrentDriverInfo] = useState(null);
-  const [legAvailability, setLegAvailability] = useState({});
-  const [loadingSeats, setLoadingSeats] = useState(false);
   const [sheetVisible, setSheetVisible] = useState(true);
 
   const translateY = useRef(new Animated.Value(0)).current;
 
-  // ── Shared loaders (used by initial mount effects AND by the
-  // passenger API refresh WebSocket listener below). They preserve the
-  // user's current route/pickup/dropoff selection instead of resetting it,
-  // per the "do not clear filters on invalidation" contract.
-  const loadRoutesList = async ({ alertOnError = false } = {}) => {
+  // ── Shared loaders (used by initial mount effects AND by the passenger
+  // API refresh WebSocket listener below). They preserve the user's current
+  // pickup/dropoff selection instead of resetting it, per the "do not clear
+  // filters on invalidation" contract.
+  const loadStops = async ({ alertOnError = false } = {}) => {
     try {
-      const { items } = await listRoutes(true);
-      setRoutesData(items || []);
-      setSelectedRoute((prev) => {
-        if (prev) {
-          const stillExists = items?.find((r) => r.id === prev.id);
-          if (stillExists) return stillExists;
-        }
-        return items?.length ? items[0] : null;
-      });
+      const { items } = await listStops(true);
+      setAllStops((items || []).map((s) => ({ stop: s })));
     } catch (err) {
-      console.warn('[HomeScreen] failed to refresh routes', err);
-      if (alertOnError) Alert.alert('Error', 'Unable to load routes');
+      console.warn('[HomeScreen] failed to load stops', err);
+      if (alertOnError) Alert.alert('Error', 'Unable to load stops');
     }
   };
 
-  const loadTripsForRoute = async (routeId, { alertOnError = false } = {}) => {
-    if (!routeId) return;
-    try {
-      const routeDetail = await getRouteDetails(routeId);
-      setStops(routeDetail.stops?.sort((a, b) => a.sequence_no - b.sequence_no) || []);
-      const { items } = await listScheduledTrips(routeId, true);
-      setTrips(items || []);
-      setSelectedTrip((prev) => {
-        if (prev) {
-          const stillExists = items?.find((t) => t.id === prev.id);
-          if (stillExists) return stillExists;
-        }
-        return items?.length ? items[0] : null;
-      });
-    } catch (err) {
-      console.warn('[HomeScreen] failed to refresh trips', err);
-      if (alertOnError) Alert.alert('Error', err.message);
-    }
-  };
-
-  const refreshLegAvailability = async (tripList, routeId, pickup, dropoff) => {
-    if (!pickup || !dropoff || !tripList?.length || !routeId) {
-      setLegAvailability({});
+  const searchTrips = async ({ alertOnError = false } = {}) => {
+    if (!pickupStopId || !dropoffStopId || pickupStopId === dropoffStopId) {
+      setRouteOptions([]);
       return;
     }
-    setLoadingSeats(true);
-    const results = {};
-    for (const trip of tripList) {
-      try {
-        const s = await getLegAvailableSeats(trip.id, routeId, pickup, dropoff);
-        results[trip.id] = { available: s.available_seats, total: s.seat_capacity };
-      } catch { results[trip.id] = null; }
+    setSearching(true);
+    try {
+      const res = await getRouteTripOptions({ from_stop_id: pickupStopId, to_stop_id: dropoffStopId });
+      const items = res.items || [];
+      setRouteOptions(items);
+      // Keep the selection if that exact trip is still offered; otherwise
+      // clear it rather than silently substituting a different ride.
+      setSelectedTrip((prev) => {
+        if (!prev) return null;
+        for (const opt of items) {
+          const match = (opt.upcoming_scheduled_trips || []).find((t) => t.scheduled_trip_id === prev.id);
+          if (match) return normalizeTrip(match, opt);
+        }
+        return null;
+      });
+    } catch (err) {
+      console.warn('[HomeScreen] search failed', err);
+      if (err.code === 'same_pickup_dropoff') {
+        // Shouldn't happen given the guard above, but stay defensive.
+        setRouteOptions([]);
+      } else if (alertOnError) {
+        Alert.alert('Error', err.message || 'Unable to search trips');
+      }
+      setRouteOptions([]);
+    } finally {
+      setSearching(false);
     }
-    setLegAvailability(results);
-    setLoadingSeats(false);
   };
 
   const panResponder = useRef(
@@ -597,19 +701,33 @@ export default function HomeScreen({ navigation }) {
   }, [sheetVisible]);
 
   useEffect(() => {
-    loadRoutesList({ alertOnError: true });
+    loadStops({ alertOnError: true });
+  }, []);
+
+  // Best-effort — nearby stop search just falls back to name-only/full-list
+  // if permission is denied or location is unavailable. Never blocks the UI.
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      } catch (err) {
+        console.warn('[HomeScreen] location unavailable', err);
+      }
+    })();
   }, []);
 
   useEffect(() => {
-    if (!selectedRoute) return;
     setLoading(true);
-    loadTripsForRoute(selectedRoute.id, { alertOnError: true }).finally(() => setLoading(false));
-  }, [selectedRoute?.id]);
+    searchTrips({ alertOnError: true }).finally(() => setLoading(false));
+  }, [pickupStopId, dropoffStopId]);
 
   useEffect(() => {
-    if (pickupStopId && dropoffStopId && stops.length) {
-      const pk = stops.find(s => s.stop?.id === pickupStopId);
-      const dk = stops.find(s => s.stop?.id === dropoffStopId);
+    if (pickupStopId && dropoffStopId && allStops.length) {
+      const pk = allStops.find(s => s.stop?.id === pickupStopId);
+      const dk = allStops.find(s => s.stop?.id === dropoffStopId);
       if (pk && dk) {
         (async () => {
           try {
@@ -622,46 +740,28 @@ export default function HomeScreen({ navigation }) {
         })();
       }
     } else setRouteCoordinates([]);
-  }, [pickupStopId, dropoffStopId, stops]);
-
-  useEffect(() => {
-    refreshLegAvailability(trips, selectedRoute?.id, pickupStopId, dropoffStopId);
-  }, [pickupStopId, dropoffStopId, trips, selectedRoute]);
+  }, [pickupStopId, dropoffStopId, allStops]);
 
   // Passenger API refresh WebSocket: a driver creating a trip (trip.created),
-  // a trip entering/leaving discovery (trip.catalog_changed), or a route/stop
-  // change (route.created/route.updated) means the home search results may
-  // be stale. Refetch in place — keep the selected route and pickup/dropoff
-  // filters exactly as the user left them; only the underlying data updates.
+  // a trip entering/leaving discovery (trip.catalog_changed), a seat-count
+  // change (trip.seat_availability_changed), or a route/stop change means
+  // the home search results may be stale. Refetch in place — keep the
+  // pickup/dropoff filters exactly as the user left them.
   useEffect(() => {
     const handleRefresh = (payload) => {
       const resources = payload?.resources || payload?.keys || [];
       if (resources.length === 0) return;
 
-      if (resources.some((r) => HOME_ROUTE_RESOURCES.has(r))) {
-        loadRoutesList();
+      if (resources.some((r) => HOME_STOPS_RESOURCES.has(r))) {
+        loadStops();
       }
-      if (selectedRoute && resources.some((r) => HOME_TRIP_RESOURCES.has(r))) {
-        loadTripsForRoute(selectedRoute.id);
-      }
-      if (resources.some((r) => HOME_SEAT_RESOURCES.has(r))) {
-        refreshLegAvailability(trips, selectedRoute?.id, pickupStopId, dropoffStopId);
+      if (resources.some((r) => HOME_SEARCH_RESOURCES.has(r))) {
+        searchTrips();
       }
     };
     eventEmitter.on('refreshData', handleRefresh);
     return () => eventEmitter.off('refreshData', handleRefresh);
-  }, [selectedRoute, trips, pickupStopId, dropoffStopId]);
-
-  useEffect(() => {
-    if (selectedTrip && pickupStopId && dropoffStopId && selectedRoute) {
-      (async () => {
-        try {
-          const f = await previewFare({ route_id: selectedRoute.id, pickup_stop_id: pickupStopId, dropoff_stop_id: dropoffStopId });
-          setFare(f);
-        } catch { setFare(null); }
-      })();
-    } else setFare(null);
-  }, [selectedTrip, pickupStopId, dropoffStopId, selectedRoute]);
+  }, [pickupStopId, dropoffStopId]);
 
   useEffect(() => {
     (async () => {
@@ -695,29 +795,46 @@ export default function HomeScreen({ navigation }) {
       return;
     }
 
-    if (!selectedTrip || !pickupStopId || !dropoffStopId || !fare) {
+    if (!selectedTrip || !pickupStopId || !dropoffStopId) {
       Alert.alert('Incomplete', 'Select pickup, dropoff, and a ride first');
       return;
     }
+
+    // Availability can change between discovery and booking — refresh
+    // discovery right before navigating rather than trusting the last fetch.
     try {
-      const s = await getLegAvailableSeats(selectedTrip.id, selectedRoute.id, pickupStopId, dropoffStopId);
-      if (!s.trip_bookable || s.available_seats === 0) {
-        Alert.alert('No seats', 'No seats available for this leg. Try another ride.');
+      const res = await getRouteTripOptions({ from_stop_id: pickupStopId, to_stop_id: dropoffStopId });
+      const items = res.items || [];
+      setRouteOptions(items);
+      let freshTrip = null;
+      for (const opt of items) {
+        const match = (opt.upcoming_scheduled_trips || []).find((t) => t.scheduled_trip_id === selectedTrip.id);
+        if (match) { freshTrip = normalizeTrip(match, opt); break; }
+      }
+      if (!freshTrip || !freshTrip.trip_bookable || freshTrip.available_seats === 0) {
+        setSelectedTrip(null);
+        Alert.alert('No seats', 'This ride is no longer available. Please choose another.');
         return;
       }
-      if (s.available_seats < 3) Alert.alert('Hurry!', `Only ${s.available_seats} seat(s) left.`);
-    } catch {
-      Alert.alert('Error', 'Could not verify availability. Try again.');
-      return;
+      if (freshTrip.available_seats < 3) Alert.alert('Hurry!', `Only ${freshTrip.available_seats} seat(s) left.`);
+      setSelectedTrip(freshTrip);
+
+      navigation.navigate('SeatSelection', {
+        scheduledTrip: { id: freshTrip.id, route_id: freshTrip.route_id, planned_start_at: freshTrip.planned_start_at },
+        pickupStopId,
+        dropoffStopId,
+        fareAmount: parseFloat(freshTrip.fare_amount),
+        farePreview: {
+          amount: freshTrip.fare_amount,
+          gst_applicable: freshTrip.gst_applicable,
+          gst_inclusive: freshTrip.gst_inclusive,
+          total_tax_amount: freshTrip.total_tax_amount,
+        },
+        routeName: freshTrip.route_name,
+      });
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Could not verify availability. Try again.');
     }
-    navigation.navigate('SeatSelection', {
-      scheduledTrip: selectedTrip,
-      pickupStopId,
-      dropoffStopId,
-      fareAmount: fare.amount,
-      farePreview: fare,
-      routeName: selectedRoute?.name,
-    });
   };
 
   const showDriverInfo = async (tripId) => {
@@ -727,6 +844,18 @@ export default function HomeScreen({ navigation }) {
       setDriverModalVisible(true);
     } catch { Alert.alert('Error', 'Could not fetch driver info'); }
   };
+
+  // Derived directly from the selected trip's parent route option — fare and
+  // GST breakdown are already embedded in the discovery response, so no
+  // separate fare-preview call is needed.
+  const fare = selectedTrip ? {
+    amount: selectedTrip.fare_amount,
+    gst_applicable: selectedTrip.gst_applicable,
+    gst_inclusive: selectedTrip.gst_inclusive,
+    total_tax_amount: selectedTrip.total_tax_amount,
+    has_ac: selectedTrip.has_ac,
+    route_name: selectedTrip.route_name,
+  } : null;
 
   const canBook = selectedTrip && pickupStopId && dropoffStopId && fare;
 
@@ -791,42 +920,10 @@ export default function HomeScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Route Selector */}
-          <Text style={[T.headingSm, { marginBottom: 10 }]}>Route</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }} contentContainerStyle={{ gap: 8 }}>
-            {routesData.map((route, idx) => {
-              const sel = selectedRoute?.id === route.id;
-              return (
-                <TouchableOpacity
-                  key={route.id || idx}
-                  onPress={() => setSelectedRoute(route)}
-                  style={{
-                    flexDirection: 'row', alignItems: 'center',
-                    paddingHorizontal: 16, paddingVertical: 10,
-                    borderRadius: 14,
-                    backgroundColor: sel ? C.gold : C.surfaceUp,
-                    borderWidth: 1, borderColor: sel ? C.goldLight : C.border,
-                    gap: 6,
-                  }}
-                >
-                  <Text style={[T.bodyMd, { color: sel ? '#000' : C.textPrimary, fontWeight: sel ? '700' : '500' }]}>
-                    {route.name}
-                  </Text>
-                  {route.has_ac && !sel && <GoldTag label="AC" />}
-                  {route.has_ac && sel && (
-                    <View style={{ backgroundColor: 'rgba(0,0,0,0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#000' }}>AC</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
           {/* Stop Selectors */}
           <Text style={[T.headingSm, { marginBottom: 10 }]}>Journey</Text>
-          <StopSelector stops={stops} selectedId={pickupStopId} onSelect={setPickupStopId} label="Pickup stop" icon="navigate-circle" accent="gold" />
-          <StopSelector stops={stops} selectedId={dropoffStopId} onSelect={setDropoffStopId} label="Dropoff stop" icon="location" accent="blue" />
+          <StopSelector stops={allStops} selectedId={pickupStopId} onSelect={setPickupStopId} label="Pickup stop" icon="navigate-circle" accent="gold" userLocation={userLocation} excludeId={dropoffStopId} />
+          <StopSelector stops={allStops} selectedId={dropoffStopId} onSelect={setDropoffStopId} label="Dropoff stop" icon="location" accent="blue" userLocation={userLocation} excludeId={pickupStopId} />
 
           {/* Fare Card */}
           {fare && (
@@ -859,35 +956,70 @@ export default function HomeScreen({ navigation }) {
           {/* Available Buses */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, marginBottom: 12 }}>
             <Text style={[T.headingSm]}>Available Buses</Text>
-            {loadingSeats && (
+            {searching && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <ActivityIndicator size="small" color={C.gold} />
-                <Text style={[T.bodySm, { color: C.textMuted, fontSize: 11 }]}>Checking seats</Text>
+                <Text style={[T.bodySm, { color: C.textMuted, fontSize: 11 }]}>Searching</Text>
               </View>
             )}
           </View>
 
-          {loading && trips.length === 0 ? (
+          {!pickupStopId || !dropoffStopId ? (
+            <GlassCard style={{ padding: 32, alignItems: 'center' }}>
+              <Ionicons name="navigate-outline" size={44} color={C.textMuted} />
+              <Text style={[T.bodyMd, { color: C.textMuted, marginTop: 12, textAlign: 'center' }]}>
+                Select a pickup and dropoff stop to see available buses
+              </Text>
+            </GlassCard>
+          ) : pickupStopId === dropoffStopId ? (
+            <GlassCard style={{ padding: 32, alignItems: 'center' }}>
+              <Ionicons name="alert-circle-outline" size={44} color={C.textMuted} />
+              <Text style={[T.bodyMd, { color: C.textMuted, marginTop: 12, textAlign: 'center' }]}>
+                Pickup and dropoff must be different stops
+              </Text>
+            </GlassCard>
+          ) : loading && routeOptions.length === 0 ? (
             <View style={{ gap: 10 }}>
               {[1, 2].map(i => <Skeleton key={i} width="100%" height={100} borderRadius={20} />)}
             </View>
-          ) : trips.length === 0 ? (
+          ) : routeOptions.every(opt => (opt.upcoming_scheduled_trips || []).length === 0) ? (
             <GlassCard style={{ padding: 32, alignItems: 'center' }}>
               <Ionicons name="bus-outline" size={44} color={C.textMuted} />
-              <Text style={[T.bodyMd, { color: C.textMuted, marginTop: 12 }]}>No buses on this route</Text>
+              <Text style={[T.bodyMd, { color: C.textMuted, marginTop: 12 }]}>
+                {routeOptions.length === 0 ? 'No route serves this pickup and dropoff yet' : 'No upcoming trips right now'}
+              </Text>
             </GlassCard>
           ) : (
-            trips.map((trip, idx) => (
-              <RideCard
-                key={trip.id || idx}
-                trip={trip}
-                selected={selectedTrip?.id === trip.id}
-                onPress={() => setSelectedTrip(trip)}
-                onViewStops={() => { setSelectedTripStops(trip.stops || []); setTripStopModalVisible(true); }}
-                onInfoPress={() => showDriverInfo(trip.id)}
-                seatInfo={legAvailability[trip.id]}
-              />
-            ))
+            routeOptions.map((option, optIdx) => {
+              const optionTrips = option.upcoming_scheduled_trips || [];
+              if (optionTrips.length === 0) return null;
+              return (
+                <View key={option.route?.id || optIdx} style={{ marginBottom: 4 }}>
+                  {routeOptions.length > 1 && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, marginTop: optIdx > 0 ? 8 : 0 }}>
+                      <Text style={[T.bodySm, { color: C.textMuted, textTransform: 'uppercase', letterSpacing: 1 }]}>
+                        {option.route?.name}
+                      </Text>
+                      {option.route?.has_ac && <GoldTag label="AC" />}
+                    </View>
+                  )}
+                  {optionTrips.map((apiTrip) => {
+                    const trip = normalizeTrip(apiTrip, option);
+                    return (
+                      <RideCard
+                        key={trip.id}
+                        trip={trip}
+                        selected={selectedTrip?.id === trip.id}
+                        onPress={() => setSelectedTrip(trip)}
+                        onViewStops={() => { setSelectedTripStops(trip.stops); setTripStopModalVisible(true); }}
+                        onInfoPress={() => showDriverInfo(trip.id)}
+                        seatInfo={{ available: trip.available_seats, total: trip.seat_capacity }}
+                      />
+                    );
+                  })}
+                </View>
+              );
+            })
           )}
 
           {/* CTA Button */}
@@ -917,7 +1049,7 @@ export default function HomeScreen({ navigation }) {
                 color: canBook ? '#000' : C.textMuted,
                 letterSpacing: 0.2,
               }}>
-                {fare ? `Choose Seats · ₹${fare.amount}` : 'Select Journey Details'}
+                {fare ? `Book Seats · ₹${fare.amount}` : 'Select Journey Details'}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
