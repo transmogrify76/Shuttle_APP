@@ -157,9 +157,9 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const menuItems = [
-    { icon: 'card-outline', label: 'Payment Methods' },
+    // { icon: 'card-outline', label: 'Payment Methods' },
     { icon: 'card-outline', label: 'RFID Wallet', onPress: () => navigation.navigate('RfidWallet') },
-    { icon: 'settings-outline', label: 'Settings' },
+    // { icon: 'settings-outline', label: 'Settings' },
     { icon: 'receipt-outline', label: 'Transaction History', onPress: () => navigation.navigate('Transactions') },
     { icon: 'chatbubble-outline', label: 'Support', onPress: () => navigation.navigate('SupportTickets') },
     { icon: 'log-out-outline', label: 'Logout', color: C.red, onPress: logout },
