@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { C, T } from '../styles/design';
 
-const BusSeatMap = ({ seatCapacity, occupiedSeats = [], selectedSeat, onSeatSelect }) => {
+const BusSeatMap = ({ seatCapacity, occupiedSeats = [], selectedSeats = [], pendingSeat = null, onSeatSelect }) => {
   const [seatLayout, setSeatLayout] = useState([]);
   const animatedValues = useRef({});
 
@@ -52,7 +52,8 @@ const BusSeatMap = ({ seatCapacity, occupiedSeats = [], selectedSeat, onSeatSele
 
   const getSeatStatus = (seatNumber) => {
     if (!seatNumber) return 'empty';
-    if (selectedSeat === seatNumber) return 'selected';
+    if (selectedSeats.includes(seatNumber)) return 'selected';
+    if (pendingSeat === seatNumber) return 'pending';
     if (occupiedSeats.includes(seatNumber)) return 'occupied';
     return 'available';
   };
@@ -72,6 +73,13 @@ const BusSeatMap = ({ seatCapacity, occupiedSeats = [], selectedSeat, onSeatSele
       bgColor = C.gold;
       borderColor = C.gold;
       textColor = '#000';
+    } else if (status === 'pending') {
+      // Tapped, waiting for the traveller-assignment modal to be completed —
+      // visually distinct from a fully-assigned seat so the user can see
+      // exactly which seat they're currently choosing.
+      bgColor = 'rgba(201,168,76,0.25)';
+      borderColor = C.gold;
+      textColor = C.gold;
     } else if (status === 'occupied') {
       bgColor = C.redDim;
       borderColor = C.red;

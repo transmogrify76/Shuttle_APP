@@ -20,13 +20,37 @@ import { C, T } from '../styles/design';
 
 const RELEVANT_RESOURCES = new Set(['transactions']);
 
+// Doc §11: the backend's raw `status` filter only accepts created/paid/failed/
+// refunded. `refund_pending` is a *derived* effective_status, not a queryable
+// raw status — sending it as `?status=refund_pending` would either 400 or
+// silently return nothing. We still offer it as a UI option but filter for it
+// client-side instead of sending it to the server.
 const statusOptions = ['all', 'paid', 'failed', 'refunded', 'refund_pending', 'created'];
+const RAW_STATUS_VALUES = new Set(['created', 'paid', 'failed', 'refunded']);
+
 const monthOptions = [
   { value: 1, label: 'January' }, { value: 2, label: 'February' }, { value: 3, label: 'March' },
   { value: 4, label: 'April' }, { value: 5, label: 'May' }, { value: 6, label: 'June' },
   { value: 7, label: 'July' }, { value: 8, label: 'August' }, { value: 9, label: 'September' },
   { value: 10, label: 'October' }, { value: 11, label: 'November' }, { value: 12, label: 'December' },
 ];
+
+// Backend responses in this codebase aren't always shaped the same way
+// (see MyBookingsScreen's parseResponse) — be defensive here too instead of
+// assuming response.items always exists.
+const parseTransactionsResponse = (res) => {
+  if (Array.isArray(res)) return res;
+  if (res && typeof res === 'object') {
+    if (Array.isArray(res.items)) return res.items;
+    if (Array.isArray(res.data)) return res.data;
+    if (Array.isArray(res.transactions)) return res.transactions;
+    if (res.data && typeof res.data === 'object') {
+      if (Array.isArray(res.data.items)) return res.data.items;
+      if (Array.isArray(res.data.transactions)) return res.data.transactions;
+    }
+  }
+  return [];
+};
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -77,12 +101,22 @@ export default function TransactionsScreen({ navigation }) {
     else setLoading(true);
     try {
       const filters = {};
-      if (selectedStatus !== 'all') filters.status = selectedStatus;
+      // Only send a raw status the backend actually recognizes; refund_pending
+      // is filtered client-side below since it's a derived effective_status.
+      if (selectedStatus !== 'all' && RAW_STATUS_VALUES.has(selectedStatus)) {
+        filters.status = selectedStatus;
+      }
       if (selectedMonth) filters.month = selectedMonth;
       if (selectedYear) filters.year = selectedYear;
       const response = await getTransactions(filters);
-      setTransactions(response.items || []);
+      console.log('[Transactions] raw response:', JSON.stringify(response).slice(0, 500));
+      let items = parseTransactionsResponse(response);
+      if (selectedStatus === 'refund_pending') {
+        items = items.filter((t) => (t.effective_status || t.payment_status) === 'refund_pending');
+      }
+      setTransactions(items);
     } catch (error) {
+      console.log('[Transactions] load failed:', error);
       Alert.alert('Error', error.message || 'Unable to load transactions');
     } finally {
       if (refresh) setRefreshing(false);

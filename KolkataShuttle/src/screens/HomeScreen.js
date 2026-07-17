@@ -917,7 +917,7 @@ export default function HomeScreen({ navigation }) {
                 color: canBook ? '#000' : C.textMuted,
                 letterSpacing: 0.2,
               }}>
-                {fare ? `Book Seats · ₹${fare.amount}` : 'Select Journey Details'}
+                {fare ? `Choose Seats · ₹${fare.amount}` : 'Select Journey Details'}
               </Text>
             </LinearGradient>
           </TouchableOpacity>

@@ -502,7 +502,23 @@ export default function BookingDetailScreen({ route, navigation }) {
                 </View>
                 <Text style={T.bodySm}>Traveller: {travellerName}</Text>
                 {relationship && <Text style={T.bodySm}>Relationship: {relationship}</Text>}
-                {booking.otp && <Text style={[T.mono, { marginTop:4 }]}>OTP: {booking.otp}</Text>}
+                {booking.otp && (
+                  <View style={{
+                    marginTop: 12,
+                    backgroundColor: C.gold,
+                    borderRadius: 16,
+                    paddingVertical: 14,
+                    paddingHorizontal: 16,
+                    alignItems: 'center',
+                  }}>
+                    <Text style={{ color: '#000', fontSize: 12, fontWeight: '800', letterSpacing: 1.5, marginBottom: 4 }}>
+                      YOUR BOARDING OTP
+                    </Text>
+                    <Text style={[T.mono, { color: '#000', fontSize: 36, fontWeight: '900', letterSpacing: 8 }]}>
+                      {booking.otp}
+                    </Text>
+                  </View>
+                )}
                 {booking.booking_status === 'booked' && canCancelWhole && (
                   <TouchableOpacity onPress={() => handleCancelSeat(booking.id)} disabled={cancellingSeat === booking.id} style={{ marginTop:8 }}>
                     <Text style={{ color:C.red }}>Cancel this seat</Text>

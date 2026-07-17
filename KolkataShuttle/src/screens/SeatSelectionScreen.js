@@ -418,6 +418,7 @@ export default function SeatSelectionScreen({ route, navigation }) {
             seatCapacity={seatCapacity}
             occupiedSeats={occupiedSeatsList}
             selectedSeats={selectedSeats}
+            pendingSeat={tempSeat}
             onSeatSelect={handleSeatPress}
             multiSelect
           />
@@ -507,7 +508,7 @@ export default function SeatSelectionScreen({ route, navigation }) {
             <View style={{ backgroundColor:C.surface, borderTopLeftRadius:28, borderTopRightRadius:28, padding:24, borderTopWidth:1, borderColor:C.border }}>
               <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
                 <Text style={T.displayMd}>Seat {tempSeat}</Text>
-                <TouchableOpacity onPress={() => setAssignModalVisible(false)}><Ionicons name="close" size={24} color={C.textSecondary} /></TouchableOpacity>
+                <TouchableOpacity onPress={() => { setAssignModalVisible(false); setTempSeat(null); }}><Ionicons name="close" size={24} color={C.textSecondary} /></TouchableOpacity>
               </View>
               <TouchableOpacity onPress={assignSelf} style={{ padding:16, backgroundColor:C.surfaceHigh, borderRadius:16, marginBottom:12, flexDirection:'row', alignItems:'center', gap:12 }}>
                 <Ionicons name="person" size={24} color={C.gold} />
@@ -541,10 +542,10 @@ export default function SeatSelectionScreen({ route, navigation }) {
               {guestErrors.email && <Text style={styles.errorText}>{guestErrors.email}</Text>}
               <TextInput style={styles.input} placeholder="Relationship (optional)" placeholderTextColor={C.textMuted} value={guestForm.relationship_label} onChangeText={t => setGuestForm({...guestForm, relationship_label:t})} maxLength={80} />
               <View style={{ flexDirection:'row', gap:12, marginTop:16 }}>
-                <TouchableOpacity onPress={() => setGuestModalVisible(false)} style={{ flex:1, backgroundColor:C.surfaceHigh, borderRadius:16, paddingVertical:12, alignItems:'center' }}>
-                  <Text style={T.bodyMd}>Cancel</Text>
+                <TouchableOpacity onPress={() => setGuestModalVisible(false)} style={{ flex:1, backgroundColor:C.surfaceHigh, borderRadius:30, paddingVertical:14, alignItems:'center', borderWidth:1, borderColor:C.border }}>
+                  <Text style={[T.bodyMd, { fontWeight:'bold' }]}>Cancel</Text>
                 </TouchableOpacity>
-                <CustomButton title="Assign" onPress={assignGuest} style={{ flex:1 }} />
+                <CustomButton title="Assign" onPress={assignGuest} style={{ flex:1 }} buttonColor="gold" />
               </View>
             </LinearGradient>
           </View>
